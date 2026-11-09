@@ -24,9 +24,7 @@ By contrast, **Einstein Notation Tensor Calculus** (used extensively in continuu
 Complete mathematical derivation of the FlashAttention backward kernel, comparing standard matrix calculus against Einstein notation side by side.
 
 - **[Interactive Visualizer (`matrix_vs_tensor_flash_attention.html`)](flash_attention/matrix_vs_tensor_flash_attention.html)**: Clean, horizontally-aligned side-by-side comparison with expandable intermediate steps and HBM/SRAM memory maps.
-- **[Complete Academic Derivation PDF](flash_attention/flash_attention_complete_derivation.pdf)**: 6-page comprehensive document deriving all variations, the softmax Jacobian, the row-reduction invariant $D_i = O_{id}\bar{O}_{id}$, and hardware tiling.
-- **[16:9 Presentation Blackboard PDF](flash_attention/flash_attention_backward_template.pdf)**: 1-page widescreen summary ready for lectures and slide decks.
-- **[Numerical Verification Script](flash_attention/verify_flash_backward.py)**: PyTorch script verifying algebraic correctness against automatic differentiation.
+- **[Complete Academic Derivation PDF](flash_attention/flash_attention_complete_derivation.pdf)**: 6-page comprehensive document detailing variations, the softmax Jacobian, the row-reduction invariant $D_i = O_{id}\bar{O}_{id}$, and hardware tiling.
 
 ---
 

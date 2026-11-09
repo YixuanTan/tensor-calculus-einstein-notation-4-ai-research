@@ -21,12 +21,9 @@ An interactive, side-by-side comparison with expandable intermediate steps is av
 
 - **`matrix_vs_tensor_flash_attention.html` / `index.html`**: Interactive web comparison.
 - **`flash_attention_complete_derivation.pdf` / `.tex`**: Comprehensive 6-page academic document detailing kinematics, chain rules, the scalar invariant identity $D_i = O_{id}\bar{O}_{id}$, and hardware tiling.
-- **`flash_attention_backward_template.pdf` / `.tex`**: 1-page 16:9 widescreen presentation blackboard.
-- **`verify_flash_backward.py`**: PyTorch numerical verification script proving the algebraic equivalence of $D = (P \odot \bar{P})\mathbf{1} = (O \odot \bar{O})\mathbf{1}$ and the gradient updates.
 
 ---
 
 ## License
 
 MIT License.
-

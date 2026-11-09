@@ -5,6 +5,10 @@
 *.synctex.gz
 missfont.log
 
+# Private / local-only files
+flash_attention_backward_template.*
+verify_flash_backward.py
+
 # OS & Editor
 .DS_Store
 .vscode/
