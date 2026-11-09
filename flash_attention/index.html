@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlashAttention Backward Pass · Matrix Calculus vs. Einstein Notation Tensor Calculus</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --text:#1f2328; --muted:#656d76; --faint:#8c959f;
+    --line:#d8dee4; --line-soft:#eaeef2; --panel:#f6f8fa; --accent:#0969da;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:var(--text);line-height:1.55;font-size:15px}
+  .wrap{max-width:1320px;margin:0 auto;padding:40px 32px 64px}
+
+  /* Header */
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+  header h1{font-size:25px;font-weight:700;letter-spacing:-.015em}
+  header p{color:var(--muted);margin-top:6px;font-size:14px;max-width:820px}
+  .controls button{font:inherit;font-size:13px;font-weight:500;color:var(--text);background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:6px}
+  .controls button:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* Sticky column titles */
+  .colhead{position:sticky;top:0;z-index:5;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--line);margin-bottom:28px}
+  .colhead div{padding:14px 20px;font-weight:600;font-size:14px;letter-spacing:.01em}
+  .colhead div span{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:2px}
+  .colhead div:first-child{border-right:1px solid var(--line)}
+
+  /* Step section */
+  section.step{margin-bottom:36px}
+  .step-title{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+  .step-num{font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 8px;white-space:nowrap}
+  .step-title h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+
+  .pair{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .cell{padding:16px 20px;min-width:0}
+  .cell + .cell{border-left:1px solid var(--line)}
+  .cell p{margin:4px 0}
+  .cell ul{margin:4px 0 4px 18px}
+  .cell li{margin:3px 0}
+  .ops{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .ops b{font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-size:11px;margin-right:6px}
+  .katex-display{overflow-x:auto;overflow-y:hidden;padding:2px 0;margin:.6em 0}
+
+  /* Expandable detailed derivation */
+  details{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  details > summary{list-style:none;cursor:pointer;padding:10px 16px;font-size:13.5px;font-weight:500;color:var(--accent);user-select:none}
+  details > summary::-webkit-details-marker{display:none}
+  details > summary::before{content:'▸';display:inline-block;width:16px;transition:transform .15s}
+  details[open] > summary::before{transform:rotate(90deg)}
+  details[open] > summary{border-bottom:1px solid var(--line)}
+
+  .sub{display:grid;grid-template-columns:1fr 1fr}
+  .sub .label{grid-column:1 / -1;background:var(--panel);padding:7px 20px;font-size:12.5px;font-weight:600;color:var(--muted);border-top:1px solid var(--line-soft)}
+  .sub .label:first-child{border-top:none}
+  .sub .c{padding:10px 20px 12px;min-width:0;font-size:14px}
+  .sub .c + .c{border-left:1px solid var(--line-soft)}
+  .note{color:var(--muted);font-size:13px}
+
+  /* Code blocks for kernel section */
+  pre{font-family:'JetBrains Mono',Menlo,monospace;font-size:12.5px;line-height:1.6;background:var(--panel);border:1px solid var(--line-soft);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre}
+
+  /* Summary table */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border-bottom:1px solid var(--line-soft);padding:10px 14px;text-align:left;vertical-align:middle}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--panel);border-bottom:1px solid var(--line)}
+  .tablewrap{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+
+  /* Memory map tables */
+  .memblock{margin-top:22px}
+  .step-title + .memblock{margin-top:0}
+  .memblock h3{font-size:15px;font-weight:600;margin-bottom:4px;display:flex;align-items:baseline;gap:10px}
+  .memblock h3 .tag{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+  .memblock > p.note{margin-bottom:10px}
+  .memtable{overflow-x:auto}
+  .memtable td{vertical-align:top}
+  .memtable td.sym{font-size:15px;width:64px}
+  .memtable td.shape{white-space:nowrap}
+  .memtable td .sub-note{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+  .memtable tbody tr:last-child td{border-bottom:none}
+
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+
+  @media (max-width:900px){
+    .pair,.sub,.colhead{grid-template-columns:1fr}
+    .cell + .cell,.sub .c + .c{border-left:none;border-top:1px solid var(--line-soft)}
+    .colhead{position:static}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>FlashAttention Backward Pass, Derived Two Ways</h1>
+    <p>Each step is shown in standard matrix calculus (left) and in Einstein notation tensor calculus (right), on the same row. Click any “Detailed derivation” panel to see every intermediate step.</p>
+  </div>
+  <div class="controls">
+    <button onclick="setAll(true)">Expand all</button>
+    <button onclick="setAll(false)">Collapse all</button>
+  </div>
+</header>
+
+<div class="colhead">
+  <div>Matrix Calculus<span>Whole arrays, transposes, traces, Hadamard products</span></div>
+  <div>Einstein Notation Tensor Calculus<span>Components, Einstein summation, Kronecker delta</span></div>
+</div>
+
+<!-- ============================================================ STEP 0 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 0</span><h2>Notation and Conventions</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <ul>
+        <li>\(Q, K \in \mathbb{R}^{L\times D_k}\), \(V, O \in \mathbb{R}^{L\times D_v}\), \(S, P \in \mathbb{R}^{L\times L}\), scalar loss \(\mathcal{L}\).</li>
+        <li>\(\mathbf{s}_i^\top,\ \mathbf{p}_i^\top,\ \mathbf{o}_i^\top\) denote the \(i\)-th <em>rows</em> of \(S, P, O\) (so \(\mathbf{s}_i, \mathbf{p}_i \in \mathbb{R}^{L}\) are column vectors).</li>
+        <li>\(\mathbf{1}\): all-ones vector. \(\odot\): elementwise (Hadamard) product. \(\exp(\cdot)\): elementwise.</li>
+        <li>\(\mathrm{diag}(\mathbf{x})\): diagonal matrix built from vector \(\mathbf{x}\).</li>
+        <li>Adjoint (gradient) of \(X\): \(\bar{X} = \partial\mathcal{L}/\partial X\), same shape as \(X\), defined by
+          \[ d\mathcal{L} = \langle \bar{X}, dX\rangle_F = \mathrm{Tr}\big(\bar{X}^\top dX\big). \]</li>
+      </ul>
+    </div>
+    <div class="cell">
+      <ul>
+        <li>Components \(Q_{ik}, K_{jk}, V_{jd}, O_{id}, S_{ij}, P_{ij}\); scalar loss \(\mathcal{L}\).</li>
+        <li>Sequence indices \(i, j, m, n \in [1, L]\); feature index \(k \in [1, D_k]\); value index \(d \in [1, D_v]\).</li>
+        <li><strong>Summation convention:</strong> an index repeated within a term is summed, \(A_k B_k \equiv \sum_k A_k B_k\).</li>
+        <li><strong>Free indices:</strong> an index that appears on the left-hand side is free on the right-hand side and is not summed.</li>
+        <li>Kronecker delta \(\delta_{jm} = 1\) if \(j=m\), else \(0\).</li>
+        <li>Adjoint of \(X\): \(\bar{X}_{ab} = \partial\mathcal{L}/\partial X_{ab}\), defined by
+          \[ d\mathcal{L} = \bar{X}_{ab}\, dX_{ab}. \]</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">The row normalizer is written \(\ell_i\) here (it is \(L_i\) in the PDF) to avoid a clash with the sequence length \(L\).</p>
+</section>
+
+<!-- ============================================================ STEP 1 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 1</span><h2>Forward Pass</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ S = \tfrac{1}{\sqrt{D_k}}\, Q K^\top,\quad \boldsymbol{\ell} = \exp(S)\,\mathbf{1},\quad P = \mathrm{diag}(\boldsymbol{\ell})^{-1}\exp(S),\quad O = P V \]
+      <div class="ops"><b>Operations</b>matrix product, transpose, elementwise exp, diagonal scaling</div>
+    </div>
+    <div class="cell">
+      \[ S_{ij} = \tfrac{1}{\sqrt{D_k}}\, Q_{ik} K_{jk},\quad \ell_i = \textstyle\sum_n \exp(S_{in}),\quad P_{ij} = \dfrac{\exp(S_{ij})}{\ell_i},\quad O_{id} = P_{ij} V_{jd} \]
+      <div class="ops"><b>Operations</b>index contraction</div>
+    </div>
+  </div>
+  <details>
+    <summary>Detailed derivation (4 steps)</summary>
+    <div class="sub">
+      <div class="label">1.1 · Scaled scores</div>
+      <div class="c">\[ S = \frac{1}{\sqrt{D_k}}\, Q K^\top \in \mathbb{R}^{L\times L} \]</div>
+      <div class="c">\[ S_{ij} = \frac{1}{\sqrt{D_k}} \sum_{k=1}^{D_k} Q_{ik} K_{jk} = \frac{1}{\sqrt{D_k}}\, Q_{ik} K_{jk} \]</div>
+
+      <div class="label">1.2 · Row normalizer (partition function)</div>
+      <div class="c">\[ \boldsymbol{\ell} = \exp(S)\,\mathbf{1} \in \mathbb{R}^{L} \]</div>
+      <div class="c">\[ \ell_i = \sum_{n=1}^{L} \exp(S_{in}) \]</div>
+
+      <div class="label">1.3 · Row-wise softmax</div>
+      <div class="c">\[ P = \mathrm{diag}(\boldsymbol{\ell})^{-1} \exp(S), \qquad \mathbf{p}_i = \frac{\exp(\mathbf{s}_i)}{\ell_i}, \qquad P\,\mathbf{1} = \mathbf{1} \]</div>
+      <div class="c">\[ P_{ij} = \frac{\exp(S_{ij})}{\ell_i}, \qquad \sum_{j=1}^{L} P_{ij} = 1 \]</div>
+
+      <div class="label">1.4 · Output</div>
+      <div class="c">\[ O = P V \in \mathbb{R}^{L\times D_v} \]</div>
+      <div class="c">\[ O_{id} = \sum_{j=1}^{L} P_{ij} V_{jd} = P_{ij} V_{jd} \]</div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 2 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 2</span><h2>Output Variation: Gradients of \(V\) and \(P\)</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ \boxed{\bar{V} = P^\top \bar{O}} \qquad \boxed{\bar{P} = \bar{O}\, V^\top} \]
+      <div class="ops"><b>Operations</b>product rule, trace cyclicity, transpose identities</div>
+    </div>
+    <div class="cell">
+      \[ \boxed{\bar{V}_{jd} = P_{ij}\, \bar{O}_{id}} \qquad \boxed{\bar{P}_{im} = \bar{O}_{id}\, V_{md}} \]
+      <div class="ops"><b>Operations</b>product rule, reordering scalar factors, renaming a dummy index</div>
+    </div>
+  </div>
+  <details>
+    <summary>Detailed derivation (5 steps)</summary>
+    <div class="sub">
+      <div class="label">2.1 · Loss differential at the output</div>
+      <div class="c">\[ d\mathcal{L} = \mathrm{Tr}\big(\bar{O}^\top dO\big) \]</div>
+      <div class="c">\[ d\mathcal{L} = \bar{O}_{id}\, dO_{id} \]</div>
+
+      <div class="label">2.2 · Product rule on the output</div>
+      <div class="c">\[ dO = d(PV) = dP\, V + P\, dV \]</div>
+      <div class="c">\[ dO_{id} = d(P_{im} V_{md}) = dP_{im}\, V_{md} + P_{im}\, dV_{md} \]</div>
+
+      <div class="label">2.3 · Substitute</div>
+      <div class="c">\[ d\mathcal{L} = \mathrm{Tr}\big(\bar{O}^\top dP\, V\big) + \mathrm{Tr}\big(\bar{O}^\top P\, dV\big) \]</div>
+      <div class="c">\[ d\mathcal{L} = \bar{O}_{id}\, dP_{im}\, V_{md} + \bar{O}_{id}\, P_{im}\, dV_{md} \]</div>
+
+      <div class="label">2.4 · Bring each term to the canonical form “coefficient × differential”</div>
+      <div class="c">
+        Using \(\mathrm{Tr}(ABC) = \mathrm{Tr}(CAB)\):
+        \[ \mathrm{Tr}\big(\bar{O}^\top dP\, V\big) = \mathrm{Tr}\big(V \bar{O}^\top dP\big) = \mathrm{Tr}\big((\bar{O} V^\top)^\top dP\big) \]
+        \[ \mathrm{Tr}\big(\bar{O}^\top P\, dV\big) = \mathrm{Tr}\big((P^\top \bar{O})^\top dV\big) \]
+      </div>
+      <div class="c">
+        Each term is a product of scalars, so the factors can be reordered freely:
+        \[ d\mathcal{L} = \big(\bar{O}_{id} V_{md}\big)\, dP_{im} + \big(P_{im} \bar{O}_{id}\big)\, dV_{md} \]
+      </div>
+
+      <div class="label">2.5 · Identify the adjoints</div>
+      <div class="c">
+        Match with \(d\mathcal{L} = \mathrm{Tr}(\bar{P}^\top dP) + \mathrm{Tr}(\bar{V}^\top dV)\):
+        \[ \bar{P} = \bar{O}\, V^\top, \qquad \bar{V} = P^\top \bar{O} \]
+      </div>
+      <div class="c">
+        Match with \(d\mathcal{L} = \bar{P}_{im}\, dP_{im} + \bar{V}_{md}\, dV_{md}\), then rename \(m \to j\):
+        \[ \bar{P}_{im} = \bar{O}_{id} V_{md}, \qquad \bar{V}_{jd} = P_{ij}\, \bar{O}_{id} \]
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 3 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 3</span><h2>Softmax Jacobian</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ \boxed{J_i = \frac{\partial \mathbf{p}_i}{\partial \mathbf{s}_i} = \mathrm{diag}(\mathbf{p}_i) - \mathbf{p}_i \mathbf{p}_i^\top} \quad \text{(one } L\times L \text{ Jacobian per row } i\text{)} \]
+      <div class="ops"><b>Operations</b>row slicing, vector quotient rule, diagonal matrix, outer product</div>
+    </div>
+    <div class="cell">
+      \[ \boxed{\frac{\partial P_{im}}{\partial S_{ij}} = P_{im}\big(\delta_{jm} - P_{ij}\big)} \]
+      <div class="ops"><b>Operations</b>scalar quotient rule, Kronecker delta, sifting property</div>
+    </div>
+  </div>
+  <details>
+    <summary>Detailed derivation (5 steps)</summary>
+    <div class="sub">
+      <div class="label">3.1 · Set up the quotient</div>
+      <div class="c">
+        Softmax acts on each row separately; take row \(i\):
+        \[ \mathbf{p}_i = \frac{\mathbf{u}}{v}, \qquad \mathbf{u} = \exp(\mathbf{s}_i) \in \mathbb{R}^{L}, \qquad v = \mathbf{1}^\top \exp(\mathbf{s}_i) = \ell_i \]
+      </div>
+      <div class="c">
+        \[ P_{im} = \frac{u}{v}, \qquad u = \exp(S_{im}), \qquad v = \ell_i = \sum_{n} \exp(S_{in}) \]
+      </div>
+
+      <div class="label">3.2 · Quotient rule</div>
+      <div class="c">
+        \[ J_i = \frac{1}{v}\,\frac{\partial \mathbf{u}}{\partial \mathbf{s}_i} - \frac{1}{v^2}\, \mathbf{u}\, \frac{\partial v}{\partial \mathbf{s}_i} \]
+        <span class="note">\(\partial\mathbf{u}/\partial\mathbf{s}_i\) is \(L\times L\); \(\partial v/\partial\mathbf{s}_i\) is a \(1\times L\) row vector.</span>
+      </div>
+      <div class="c">
+        \[ \frac{\partial P_{im}}{\partial S_{ij}} = \frac{\dfrac{\partial u}{\partial S_{ij}}\, v - u\, \dfrac{\partial v}{\partial S_{ij}}}{v^2} \]
+      </div>
+
+      <div class="label">3.3 · Derivative of the numerator</div>
+      <div class="c">
+        An elementwise map has a diagonal Jacobian:
+        \[ \frac{\partial \mathbf{u}}{\partial \mathbf{s}_i} = \mathrm{diag}\big(\exp(\mathbf{s}_i)\big) \]
+      </div>
+      <div class="c">
+        Components are independent coordinates, \(\partial S_{im}/\partial S_{ij} = \delta_{jm}\):
+        \[ \frac{\partial u}{\partial S_{ij}} = \exp(S_{im})\, \delta_{jm} \]
+      </div>
+
+      <div class="label">3.4 · Derivative of the denominator</div>
+      <div class="c">
+        \[ \frac{\partial v}{\partial \mathbf{s}_i} = \mathbf{1}^\top \mathrm{diag}\big(\exp(\mathbf{s}_i)\big) = \exp(\mathbf{s}_i)^\top \]
+      </div>
+      <div class="c">
+        \[ \frac{\partial v}{\partial S_{ij}} = \sum_{n} \exp(S_{in})\, \delta_{jn} = \exp(S_{ij}) \]
+        <span class="note">Sifting: only the \(n = j\) term survives.</span>
+      </div>
+
+      <div class="label">3.5 · Assemble and substitute the forward definition</div>
+      <div class="c">
+        \[ J_i = \frac{\mathrm{diag}\big(\exp(\mathbf{s}_i)\big)}{\ell_i} - \frac{\exp(\mathbf{s}_i)\,\exp(\mathbf{s}_i)^\top}{\ell_i^2} \]
+        \[ = \mathrm{diag}(\mathbf{p}_i) - \mathbf{p}_i \mathbf{p}_i^\top \]
+        <span class="note">Note that \(J_i\) is symmetric.</span>
+      </div>
+      <div class="c">
+        \[ \frac{\partial P_{im}}{\partial S_{ij}} = \frac{\delta_{jm}\exp(S_{im})\,\ell_i - \exp(S_{im})\exp(S_{ij})}{\ell_i^2} \]
+        \[ = \delta_{jm} P_{im} - P_{im} P_{ij} = P_{im}\big(\delta_{jm} - P_{ij}\big) \]
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 4 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 4</span><h2>Backpropagating Through Softmax: Gradient of \(S\)</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ \boxed{\bar{S} = P \odot \big(\bar{P} - D\,\mathbf{1}^\top\big)}, \qquad \boxed{D = (P \odot \bar{P})\,\mathbf{1}} \in \mathbb{R}^{L} \]
+      <div class="ops"><b>Operations</b>row-wise decomposition, symmetry of \(J_i\), Hadamard product, broadcasting via \(D\mathbf{1}^\top\)</div>
+    </div>
+    <div class="cell">
+      \[ \boxed{\bar{S}_{ij} = P_{ij}\big(\bar{P}_{ij} - D_i\big)}, \qquad \boxed{D_i = P_{im}\, \bar{P}_{im}} \]
+      <div class="ops"><b>Operations</b>chain rule, Kronecker sifting, factoring</div>
+    </div>
+  </div>
+  <details>
+    <summary>Detailed derivation (5 steps)</summary>
+    <div class="sub">
+      <div class="label">4.1 · Separate the two branches</div>
+      <div class="c">
+        \[ d\mathcal{L} = \mathrm{Tr}\big(\bar{P}^\top dP\big) + \mathrm{Tr}\big(\bar{V}^\top dV\big) \]
+        <span class="note">\(V\) is an independent input (\(V = XW_V\)), so the \(dV\) term does not depend on \(S\). Only the first term carries \(dS\).</span>
+      </div>
+      <div class="c">
+        \[ d\mathcal{L} = \bar{P}_{im}\, dP_{im} + \bar{V}_{jd}\, dV_{jd} \]
+        <span class="note">\(\partial V_{jd}/\partial S_{ij} = 0\), so only the first term carries \(dS\).</span>
+      </div>
+
+      <div class="label">4.2 · Chain rule through softmax</div>
+      <div class="c">
+        Split the Frobenius pairing into rows and use \(d\mathbf{p}_i = J_i\, d\mathbf{s}_i\):
+        \[ \mathrm{Tr}\big(\bar{P}^\top dP\big) = \sum_i \bar{\mathbf{p}}_i^\top d\mathbf{p}_i = \sum_i \bar{\mathbf{p}}_i^\top J_i\, d\mathbf{s}_i \]
+      </div>
+      <div class="c">
+        Use \(dP_{im} = \dfrac{\partial P_{im}}{\partial S_{ij}}\, dS_{ij}\):
+        \[ \bar{P}_{im}\, dP_{im} = \bar{P}_{im}\, \frac{\partial P_{im}}{\partial S_{ij}}\, dS_{ij} \]
+      </div>
+
+      <div class="label">4.3 · Identify the adjoint of \(S\)</div>
+      <div class="c">
+        \[ \bar{\mathbf{s}}_i = J_i^\top \bar{\mathbf{p}}_i = J_i\, \bar{\mathbf{p}}_i \qquad (J_i \text{ symmetric}) \]
+      </div>
+      <div class="c">
+        \[ \bar{S}_{ij} = \bar{P}_{im}\, \frac{\partial P_{im}}{\partial S_{ij}} \]
+      </div>
+
+      <div class="label">4.4 · Substitute the Jacobian</div>
+      <div class="c">
+        \[ \bar{\mathbf{s}}_i = \mathrm{diag}(\mathbf{p}_i)\,\bar{\mathbf{p}}_i - \mathbf{p}_i\,\big(\mathbf{p}_i^\top \bar{\mathbf{p}}_i\big) = \mathbf{p}_i \odot \bar{\mathbf{p}}_i - D_i\, \mathbf{p}_i \]
+        with \(D_i := \mathbf{p}_i^\top \bar{\mathbf{p}}_i\) (a scalar).
+      </div>
+      <div class="c">
+        \[ \bar{S}_{ij} = \bar{P}_{im} P_{im}\, \delta_{jm} - \bar{P}_{im} P_{im}\, P_{ij} = P_{ij}\, \bar{P}_{ij} - P_{ij}\, D_i \]
+        with \(D_i := P_{im}\bar{P}_{im}\) (summed over \(m\)); the \(\delta_{jm}\) term keeps only \(m = j\).
+      </div>
+
+      <div class="label">4.5 · Factor and assemble</div>
+      <div class="c">
+        \[ \bar{\mathbf{s}}_i = \mathbf{p}_i \odot \big(\bar{\mathbf{p}}_i - D_i\, \mathbf{1}\big) \]
+        Stacking the rows:
+        \[ D = (P \odot \bar{P})\,\mathbf{1}, \qquad \bar{S} = P \odot \big(\bar{P} - D\,\mathbf{1}^\top\big) \]
+      </div>
+      <div class="c">
+        \[ \bar{S}_{ij} = P_{ij}\big(\bar{P}_{ij} - D_i\big), \qquad D_i = P_{im}\,\bar{P}_{im} \]
+        <span class="note">This already holds for all \(i, j\); no stacking step is needed.</span>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 5 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 5</span><h2>Eliminating \(\bar{P}\) from \(D\)</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ \boxed{D = (P \odot \bar{P})\,\mathbf{1} = (O \odot \bar{O})\,\mathbf{1}} \]
+      <div class="ops"><b>Operations</b>row extraction, associativity of matrix products, identity \((A\odot B)\mathbf{1} = \mathrm{diag}(AB^\top)\)</div>
+    </div>
+    <div class="cell">
+      \[ \boxed{D_i = P_{im}\,\bar{P}_{im} = O_{id}\,\bar{O}_{id}} \]
+      <div class="ops"><b>Operations</b>substitution, reordering a finite double sum</div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">Why it matters: the left form of \(D\) uses \(\bar{P} \in \mathbb{R}^{L\times L}\); the right form uses only \(O, \bar{O} \in \mathbb{R}^{L\times D_v}\), which are already available. Cost drops from \(\mathcal{O}(L^2)\) storage to an \(\mathcal{O}(L D_v)\) row-wise dot product.</p>
+  <details>
+    <summary>Detailed derivation (5 steps)</summary>
+    <div class="sub">
+      <div class="label">5.1 · Starting point</div>
+      <div class="c">\[ D_i = \mathbf{p}_i^\top \bar{\mathbf{p}}_i \qquad \big(D = (P\odot\bar{P})\,\mathbf{1}\big) \]</div>
+      <div class="c">\[ D_i = P_{im}\, \bar{P}_{im} \]</div>
+
+      <div class="label">5.2 · Substitute the gradient of \(P\) from Step 2</div>
+      <div class="c">
+        Row \(i\) of \(\bar{P} = \bar{O}V^\top\) is \(\bar{\mathbf{p}}_i^\top = \bar{\mathbf{o}}_i^\top V^\top\), i.e. \(\bar{\mathbf{p}}_i = V \bar{\mathbf{o}}_i\):
+        \[ D_i = \mathbf{p}_i^\top \big(V\, \bar{\mathbf{o}}_i\big) \]
+      </div>
+      <div class="c">
+        Use \(\bar{P}_{im} = \bar{O}_{id} V_{md}\):
+        \[ D_i = P_{im}\, \big(\bar{O}_{id}\, V_{md}\big) = \sum_{m}\sum_{d} P_{im}\, \bar{O}_{id}\, V_{md} \]
+      </div>
+
+      <div class="label">5.3 · Regroup</div>
+      <div class="c">
+        Associativity of the matrix product:
+        \[ D_i = \big(\mathbf{p}_i^\top V\big)\, \bar{\mathbf{o}}_i \]
+      </div>
+      <div class="c">
+        Swap the order of the two finite sums (sum over \(m\) first):
+        \[ D_i = \sum_{d} \Big(\sum_{m} P_{im} V_{md}\Big) \bar{O}_{id} = \big(P_{im} V_{md}\big)\, \bar{O}_{id} \]
+      </div>
+
+      <div class="label">5.4 · Recognize the forward output</div>
+      <div class="c">
+        Row \(i\) of \(O = PV\) is \(\mathbf{o}_i^\top = \mathbf{p}_i^\top V\):
+        \[ D_i = \mathbf{o}_i^\top \bar{\mathbf{o}}_i \]
+      </div>
+      <div class="c">
+        \(P_{im} V_{md} = O_{id}\) by Step 1.4:
+        \[ D_i = O_{id}\, \bar{O}_{id} \]
+      </div>
+
+      <div class="label">5.5 · Statement for all rows at once</div>
+      <div class="c">
+        Here \(\mathrm{diag}(\cdot)\) extracts the diagonal of a matrix. With \((A\odot B)\mathbf{1} = \mathrm{diag}(AB^\top)\) and \(\bar{P}^\top = V\bar{O}^\top\):
+        \[ D = \mathrm{diag}\big(P\bar{P}^\top\big) = \mathrm{diag}\big(PV\bar{O}^\top\big) = \mathrm{diag}\big(O\bar{O}^\top\big) = (O\odot\bar{O})\,\mathbf{1} \]
+      </div>
+      <div class="c">
+        \(i\) is a free index, so 5.4 already holds for every row:
+        \[ D_i = O_{id}\, \bar{O}_{id} \quad \forall\, i \]
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 6 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 6</span><h2>Gradients of \(Q\) and \(K\)</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ \boxed{\bar{Q} = \tfrac{1}{\sqrt{D_k}}\, \bar{S} K} \qquad \boxed{\bar{K} = \tfrac{1}{\sqrt{D_k}}\, \bar{S}^\top Q} \]
+      <div class="ops"><b>Operations</b>product rule, trace cyclicity, \(\mathrm{Tr}(A) = \mathrm{Tr}(A^\top)\)</div>
+    </div>
+    <div class="cell">
+      \[ \boxed{\bar{Q}_{ik} = \tfrac{1}{\sqrt{D_k}}\, \bar{S}_{ij} K_{jk}} \qquad \boxed{\bar{K}_{jk} = \tfrac{1}{\sqrt{D_k}}\, \bar{S}_{ij} Q_{ik}} \]
+      <div class="ops"><b>Operations</b>product rule, reading off coefficients</div>
+    </div>
+  </div>
+  <details>
+    <summary>Detailed derivation (4 steps)</summary>
+    <div class="sub">
+      <div class="label">6.1 · Differential of the scores</div>
+      <div class="c">\[ dS = \frac{1}{\sqrt{D_k}}\Big(dQ\, K^\top + Q\, dK^\top\Big) \]</div>
+      <div class="c">\[ dS_{ij} = \frac{1}{\sqrt{D_k}}\Big(dQ_{ik}\, K_{jk} + Q_{ik}\, dK_{jk}\Big) \]</div>
+
+      <div class="label">6.2 · Substitute into \(d\mathcal{L}\)</div>
+      <div class="c">\[ d\mathcal{L} = \mathrm{Tr}\big(\bar{S}^\top dS\big) = \frac{1}{\sqrt{D_k}}\Big[\mathrm{Tr}\big(\bar{S}^\top dQ\, K^\top\big) + \mathrm{Tr}\big(\bar{S}^\top Q\, dK^\top\big)\Big] \]</div>
+      <div class="c">\[ d\mathcal{L} = \bar{S}_{ij}\, dS_{ij} = \frac{1}{\sqrt{D_k}}\Big[\bar{S}_{ij} K_{jk}\, dQ_{ik} + \bar{S}_{ij} Q_{ik}\, dK_{jk}\Big] \]</div>
+
+      <div class="label">6.3 · Canonical form</div>
+      <div class="c">
+        \[ \mathrm{Tr}\big(\bar{S}^\top dQ\, K^\top\big) = \mathrm{Tr}\big(K^\top \bar{S}^\top dQ\big) = \mathrm{Tr}\big((\bar{S}K)^\top dQ\big) \]
+        \[ \mathrm{Tr}\big(\bar{S}^\top Q\, dK^\top\big) = \mathrm{Tr}\big(dK\, Q^\top \bar{S}\big) = \mathrm{Tr}\big((\bar{S}^\top Q)^\top dK\big) \]
+      </div>
+      <div class="c">
+        Already in canonical form: the coefficient of \(dQ_{ik}\) is \(\bar{S}_{ij}K_{jk}\) (summed over \(j\)), and the coefficient of \(dK_{jk}\) is \(\bar{S}_{ij}Q_{ik}\) (summed over \(i\)).
+      </div>
+
+      <div class="label">6.4 · Identify</div>
+      <div class="c">\[ \bar{Q} = \frac{1}{\sqrt{D_k}}\, \bar{S} K, \qquad \bar{K} = \frac{1}{\sqrt{D_k}}\, \bar{S}^\top Q \]</div>
+      <div class="c">\[ \bar{Q}_{ik} = \frac{1}{\sqrt{D_k}}\, \bar{S}_{ij} K_{jk}, \qquad \bar{K}_{jk} = \frac{1}{\sqrt{D_k}}\, \bar{S}_{ij} Q_{ik} \]</div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 7 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 7</span><h2>From Equations to the Tiled Backward Kernel</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <p>The kernel processes blocks of query rows \(I\) and key rows \(J\) in on-chip SRAM. Inside a tile, \(\bar{S}_{IJ} = P_{IJ}\odot(\bar{P}_{IJ} - D_I\mathbf{1}^\top)\) requires \(D_I\).</p>
+      <p>By its original definition \(D = (P\odot\bar{P})\mathbf{1}\), \(D_I\) depends on <em>every</em> key block. Step 5 gives \(D = (O\odot\bar{O})\mathbf{1}\), which can be computed before the loop.</p>
+    </div>
+    <div class="cell">
+      <p>The kernel processes blocks of query indices \(i\in I\) and key indices \(j\in J\) in on-chip SRAM. Inside a tile, \(\bar{S}_{ij} = P_{ij}(\bar{P}_{ij} - D_i)\) requires \(D_i\).</p>
+      <p>By its original definition \(D_i = P_{im}\bar{P}_{im}\), \(D_i\) sums over <em>all</em> \(m\in[1,L]\). Step 5 gives \(D_i = O_{id}\bar{O}_{id}\), which can be computed before the loop.</p>
+    </div>
+  </div>
+  <details>
+    <summary>Kernel outline in both notations</summary>
+    <div class="sub">
+      <div class="label">7.1 · Precompute (once, \(\mathcal{O}(L D_v)\))</div>
+      <div class="c"><pre>D = rowsum(O ⊙ Ō)                 # shape (L,)</pre></div>
+      <div class="c"><pre>D_i = O_id Ō_id                   # for all i</pre></div>
+
+      <div class="label">7.2 · For each tile (query block I, key block J), in SRAM</div>
+      <div class="c"><pre>S_IJ  = Q_I K_J^T / √D_k
+P_IJ  = exp(S_IJ) / ℓ_I            # ℓ saved from forward
+P̄_IJ  = Ō_I V_J^T
+S̄_IJ  = P_IJ ⊙ (P̄_IJ − D_I 1^T)
+
+V̄_J  += P_IJ^T Ō_I
+Q̄_I  += S̄_IJ K_J   / √D_k
+K̄_J  += S̄_IJ^T Q_I / √D_k</pre></div>
+      <div class="c"><pre>S_ij  = Q_ik K_jk / √D_k
+P_ij  = exp(S_ij) / ℓ_i            # ℓ saved from forward
+P̄_ij  = Ō_id V_jd
+S̄_ij  = P_ij (P̄_ij − D_i)
+
+V̄_jd += P_ij Ō_id                  # partial sum over i ∈ I
+Q̄_ik += S̄_ij K_jk / √D_k           # partial sum over j ∈ J
+K̄_jk += S̄_ij Q_ik / √D_k           # partial sum over i ∈ I</pre></div>
+
+      <div class="label">7.3 · Memory footprint</div>
+      <div class="c">\(P_{IJ}, \bar{P}_{IJ}, \bar{S}_{IJ}\) live only in SRAM/registers for the current tile. Global memory holds \(Q, K, V, O, \bar{O}\), the vectors \(\boldsymbol{\ell}, D \in \mathbb{R}^L\), and the outputs \(\bar{Q}, \bar{K}, \bar{V}\).</div>
+      <div class="c">The \(L\times L\) arrays \(P, \bar{P}, \bar{S}\) are never written to global memory. Extra storage beyond inputs and outputs: \(\ell_i\) and \(D_i\), i.e. \(\mathcal{O}(L)\).</div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ STEP 8 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 8</span><h2>Memory Map: What Lives in HBM and What Stays in SRAM</h2></div>
+
+  <!-- 8.1 -->
+  <div class="memblock">
+    <h3>8.1 · Formal inputs and outputs <span class="tag">HBM</span></h3>
+    <p class="note">The tensors of the operator interface. Each has one sequence index and one feature index, so each costs \(\mathcal{O}(L\,D_k)\) or \(\mathcal{O}(L\,D_v)\): linear in \(L\).</p>
+    <div class="tablewrap memtable">
+      <table>
+        <thead>
+          <tr><th>Tensor</th><th>Components</th><th>Role</th><th>Stage</th><th>Shape</th><th>Location</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="sym">\(Q\)</td><td>\(Q_{ik}\)</td><td>Queries</td><td>Forward input</td><td class="shape">\(L \times D_k\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(K\)</td><td>\(K_{jk}\)</td><td>Keys</td><td>Forward input</td><td class="shape">\(L \times D_k\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(V\)</td><td>\(V_{jd}\)</td><td>Values</td><td>Forward input</td><td class="shape">\(L \times D_v\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(O\)</td><td>\(O_{id} = P_{ij} V_{jd}\)</td><td>Attention output</td><td>Forward output</td><td class="shape">\(L \times D_v\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(\bar{O}\)</td><td>\(\bar{O}_{id} = \partial\mathcal{L}/\partial O_{id}\)</td><td>Upstream gradient</td><td>Backward input</td><td class="shape">\(L \times D_v\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(\bar{Q}\)</td><td>\(\bar{Q}_{ik} = \partial\mathcal{L}/\partial Q_{ik}\)</td><td>Query gradient</td><td>Backward output</td><td class="shape">\(L \times D_k\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(\bar{K}\)</td><td>\(\bar{K}_{jk} = \partial\mathcal{L}/\partial K_{jk}\)</td><td>Key gradient</td><td>Backward output</td><td class="shape">\(L \times D_k\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(\bar{V}\)</td><td>\(\bar{V}_{jd} = \partial\mathcal{L}/\partial V_{jd}\)</td><td>Value gradient</td><td>Backward output</td><td class="shape">\(L \times D_v\)</td><td>HBM</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 8.2 -->
+  <div class="memblock">
+    <h3>8.2 · Auxiliary vectors saved between passes <span class="tag">HBM</span></h3>
+    <p class="note">The only extra storage beyond inputs and outputs. Each carries a single free index \(i\), so each costs \(\mathcal{O}(L)\).</p>
+    <div class="tablewrap memtable">
+      <table>
+        <thead>
+          <tr><th>Tensor</th><th>Components</th><th>Role</th><th>Stage</th><th>Shape</th><th>Location</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="sym">\(\boldsymbol{\ell}\)</td><td>\(\ell_i = \sum_{n} \exp(S_{in})\)</td><td>Softmax row normalizer
+              <span class="sub-note">Lets the backward pass rebuild \(P_{ij} = \exp(S_{ij})/\ell_i\) tile by tile without storing \(P\).</span></td><td>Written by forward pass</td><td class="shape">\(L\)</td><td>HBM</td></tr>
+          <tr><td class="sym">\(D\)</td><td>\(D_i = O_{id}\,\bar{O}_{id}\)</td><td>Row reduction (Step 5)
+              <span class="sub-note">The per-row shift in \(\bar{S}_{ij} = P_{ij}(\bar{P}_{ij} - D_i)\); computed once before the tile loop.</span></td><td>Backward precompute</td><td class="shape">\(L\)</td><td>HBM</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top:8px">Implementations usually store the log-sum-exp \(\log \ell_i\) (with the running row maximum folded in) for numerical stability; it carries the same information as \(\ell_i\).</p>
+  </div>
+
+  <!-- 8.3 -->
+  <div class="memblock">
+    <h3>8.3 · Transient tensors computed on the fly <span class="tag">SRAM only</span></h3>
+    <p class="note">Each has two sequence indices \(i, j\), so the full array would cost \(\mathcal{O}(L^2)\). It is never materialized in HBM: for a query block \(I\) (\(B_r\) rows) and key block \(J\) (\(B_c\) rows), only the tile \(i \in I,\ j \in J\) exists, in SRAM, and is discarded once contracted.</p>
+    <div class="tablewrap memtable">
+      <table>
+        <thead>
+          <tr><th>Tensor</th><th>Meaning</th><th>Full size</th><th>Tile in SRAM</th><th>Formed in SRAM</th><th>Contracted into (accumulated in HBM)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="sym">\(S\)</td><td>Attention scores</td><td class="shape">\(L \times L\)</td><td class="shape">\(B_r \times B_c\)</td>
+              <td>\(S_{ij} = \tfrac{1}{\sqrt{D_k}}\, Q_{ik} K_{jk}\)</td>
+              <td>Used only to form \(P_{ij}\)</td></tr>
+          <tr><td class="sym">\(P\)</td><td>Attention probabilities</td><td class="shape">\(L \times L\)</td><td class="shape">\(B_r \times B_c\)</td>
+              <td>\(P_{ij} = \exp(S_{ij}) / \ell_i\)</td>
+              <td>\(\bar{V}_{jd} \mathrel{+}= P_{ij}\, \bar{O}_{id}\)</td></tr>
+          <tr><td class="sym">\(\bar{P}\)</td><td>Gradient of probabilities</td><td class="shape">\(L \times L\)</td><td class="shape">\(B_r \times B_c\)</td>
+              <td>\(\bar{P}_{ij} = \bar{O}_{id}\, V_{jd}\)</td>
+              <td>Used only to form \(\bar{S}_{ij}\)</td></tr>
+          <tr><td class="sym">\(\bar{S}\)</td><td>Gradient of scores</td><td class="shape">\(L \times L\)</td><td class="shape">\(B_r \times B_c\)</td>
+              <td>\(\bar{S}_{ij} = P_{ij}\,(\bar{P}_{ij} - D_i)\)</td>
+              <td>\(\bar{Q}_{ik} \mathrel{+}= \tfrac{1}{\sqrt{D_k}}\, \bar{S}_{ij} K_{jk}\)<br>\(\bar{K}_{jk} \mathrel{+}= \tfrac{1}{\sqrt{D_k}}\, \bar{S}_{ij} Q_{ik}\)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ SUMMARY -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Summary</span><h2>Results Side by Side</h2></div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Quantity</th><th>Matrix calculus</th><th>Einstein Notation Tensor Calculus</th><th>Summed index</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Scores</td><td>\(S = \tfrac{1}{\sqrt{D_k}} QK^\top\)</td><td>\(S_{ij} = \tfrac{1}{\sqrt{D_k}} Q_{ik}K_{jk}\)</td><td>\(k\)</td></tr>
+        <tr><td>Probabilities</td><td>\(P = \mathrm{diag}(\boldsymbol{\ell})^{-1}\exp(S)\)</td><td>\(P_{ij} = \exp(S_{ij})/\ell_i\)</td><td>—</td></tr>
+        <tr><td>Output</td><td>\(O = PV\)</td><td>\(O_{id} = P_{ij}V_{jd}\)</td><td>\(j\)</td></tr>
+        <tr><td>Gradient of \(V\)</td><td>\(\bar{V} = P^\top\bar{O}\)</td><td>\(\bar{V}_{jd} = P_{ij}\bar{O}_{id}\)</td><td>\(i\)</td></tr>
+        <tr><td>Gradient of \(P\)</td><td>\(\bar{P} = \bar{O}V^\top\)</td><td>\(\bar{P}_{im} = \bar{O}_{id}V_{md}\)</td><td>\(d\)</td></tr>
+        <tr><td>Softmax Jacobian</td><td>\(J_i = \mathrm{diag}(\mathbf{p}_i) - \mathbf{p}_i\mathbf{p}_i^\top\)</td><td>\(\partial P_{im}/\partial S_{ij} = P_{im}(\delta_{jm} - P_{ij})\)</td><td>—</td></tr>
+        <tr><td>Row reduction</td><td>\(D = (O\odot\bar{O})\mathbf{1}\)</td><td>\(D_i = O_{id}\bar{O}_{id}\)</td><td>\(d\)</td></tr>
+        <tr><td>Gradient of \(S\)</td><td>\(\bar{S} = P\odot(\bar{P} - D\mathbf{1}^\top)\)</td><td>\(\bar{S}_{ij} = P_{ij}(\bar{P}_{ij} - D_i)\)</td><td>—</td></tr>
+        <tr><td>Gradient of \(Q\)</td><td>\(\bar{Q} = \tfrac{1}{\sqrt{D_k}}\bar{S}K\)</td><td>\(\bar{Q}_{ik} = \tfrac{1}{\sqrt{D_k}}\bar{S}_{ij}K_{jk}\)</td><td>\(j\)</td></tr>
+        <tr><td>Gradient of \(K\)</td><td>\(\bar{K} = \tfrac{1}{\sqrt{D_k}}\bar{S}^\top Q\)</td><td>\(\bar{K}_{jk} = \tfrac{1}{\sqrt{D_k}}\bar{S}_{ij}Q_{ik}\)</td><td>\(i\)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+
+</div>
+<script>
+  function setAll(open){ document.querySelectorAll('details').forEach(d => d.open = open); }
+</script>
+</body>
+</html>

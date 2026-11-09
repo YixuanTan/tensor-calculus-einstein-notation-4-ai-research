@@ -1,0 +1,188 @@
+\documentclass[11pt]{article}
+
+% --- 16:9 Widescreen for Video & Studio Display ---
+\usepackage[paperwidth=16in, paperheight=9in, margin=0.28in]{geometry}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{xcolor}
+\usepackage{fontspec}
+
+% Clean Typography (Keep default Latin Modern for Math Operators, Helvetica for UI headers)
+\setsansfont{Helvetica}
+\setmonofont{Menlo}
+\renewcommand{\familydefault}{\sfdefault}
+
+% --- Light Mode Color Palette (Clean Academic Paper & Chalkboard Hybrid) ---
+\definecolor{bglight}{HTML}{FFFFFF}      % Pure crisp white
+\definecolor{boxbg}{HTML}{F6F8FA}        % Crisp light container
+\definecolor{boxborder}{HTML}{D0D7DE}    % Subtle GitHub/Paper border
+\definecolor{textdark}{HTML}{1F2328}     % Deep ink black foreground
+\definecolor{textgray}{HTML}{57606A}     % Academic gray for notes
+\definecolor{badred}{HTML}{CF222E}       % Transpose Hell warning red
+\definecolor{badbg}{HTML}{FFF8F8}        % Transpose Hell light red tint
+\definecolor{badborder}{HTML}{FF8182}    % Transpose Hell border
+\definecolor{goodgreen}{HTML}{1A7F37}    % Einstein notation emerald green
+\definecolor{goodbg}{HTML}{F6FEF9}       % Einstein notation light mint tint
+\definecolor{goodborder}{HTML}{4AC26B}   % Einstein notation border
+\definecolor{accentyellow}{HTML}{9A6700} % Sequence index highlight (i, j, m)
+\definecolor{accentblue}{HTML}{0969DA}   % Feature dim highlight (k, d)
+\definecolor{canvasbg}{HTML}{FCFCFD}     % Handwriting canvas clean background
+\definecolor{canvasborder}{HTML}{0969DA} % Canvas border accent blue
+
+\pagecolor{bglight}
+\color{textdark}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% Helper for Box Framing with zero margin jitter
+\newcommand{\customcard}[4]{%
+    \setlength{\fboxrule}{#1}%
+    \setlength{\fboxsep}{7pt}%
+    \fcolorbox{#2}{#3}{%
+        \begin{minipage}{\dimexpr\linewidth-2\fboxrule-2\fboxsep\relax}
+            #4
+        \end{minipage}%
+    }%
+}
+
+\begin{document}
+\enlargethispage{3in}
+
+% ==============================================================================
+% TOP BAR: Title & Epistemological Stance
+% ==============================================================================
+\customcard{1.2pt}{boxborder}{boxbg}{
+    \noindent
+    \begin{minipage}[c]{0.70\textwidth}
+        {\fontsize{17}{21}\selectfont\textbf{Topic 02: FlashAttention Backward \& Elimination of Intermediate $\bar{P}$}}\\[2pt]
+        {\fontsize{10}{13}\selectfont\color{textgray}Computational Mechanics Perspective: Slaying ``Transpose Hell'' via Einstein Index Contraction}
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[c]{0.28\textwidth}
+        \raggedleft
+        {\color{accentyellow}\textbf{Gold: Sequence Axes ($i, j, m$)}}\\[2pt]
+        {\color{accentblue}\textbf{Blue: Feature Channels ($k, d$)}}\\[2pt]
+        {\color{textgray}\small\texttt{github.com/tensor-calculus-for-ai}}
+    \end{minipage}
+}
+
+\vspace{0.06in}
+
+% ==============================================================================
+% ROW 1: Side-by-Side Paradigm Contrast (Transpose Hell vs Index Contraction)
+% ==============================================================================
+\noindent
+\begin{minipage}[t]{0.492\textwidth}
+    \customcard{1.2pt}{badborder}{badbg}{
+        {\large\bfseries\color{badred}[$\times$] The Matrix Chaos: ``Transpose Hell'' \& Permutation Traps}\\[4pt]
+        \small
+        \textbf{1. 4D Tensor Permutation Nightmare (B, H, L, D):}
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item \texttt{Q.transpose(1, 2) @ K.transpose(1, 2).transpose(-2, -1)}
+            \item Strips coordinates of intrinsic physical meaning; forces endless \texttt{.contiguous()} calls to repair memory strides, causing hidden copies and GPU cache fragmentation.
+        \end{itemize}
+        
+        \textbf{2. Associativity Blindness:}
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item 2D matrix multiplication arbitrarily hardcodes left-associative binding: $O = (Q K^T) V$.
+            \item Fails to express contraction reordering, obscuring the path to $\mathcal{O}(L)$ linear states.
+        \end{itemize}
+        
+        \textbf{3. The Backward Wall \& Notation Breakdown:}
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item Softmax derivatives get trapped in Hadamard products $\odot$, diagonal embeddings, and row-sums.
+            \item Original FlashAttention appendix proves $D = \mathrm{rowsum}(\bar{P} \odot P)$ via opaque matrix traces $\mathrm{Tr}(\cdot)$ and block partitioning, hiding the hardware kernel dataflow.
+        \end{itemize}
+    }
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.492\textwidth}
+    \customcard{1.2pt}{goodborder}{goodbg}{
+        {\large\bfseries\color{goodgreen}[$\checkmark$] Einstein Tensor Calculus: Coordinate-Invariant \& Explicit}\\[4pt]
+        \small
+        \textbf{1. Explicit Axis Binding \& Invariant Topology:}
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item Free index $i \in [1, L]$ (Query tokens), contraction dummy $j \in [1, L]$ (Key tokens).
+            \item Forward pass: $S_{ij} = \frac{1}{\sqrt{D_k}} Q_{ik} K_{jk}$ (feature channel $k$ contracts automatically).
+            \item Zero transpose calls; tensor geometry is fully preserved in coordinate indices.
+        \end{itemize}
+        
+        \textbf{2. Component-wise Clarity \& Free Index Invariance:}
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item Normalized attention: $P_{ij} = \frac{\exp(S_{ij})}{L_i}$ (free index $i$ on LHS inherently enforces row broadcast; no redundant brackets needed).
+            \item Output contraction: $O_{id} = P_{ij} V_{jd}$ (contracts sequence axis $j$ cleanly into token features).
+        \end{itemize}
+        
+        \textbf{3. Kronecker Delta Derivative (Scalar Simplicity):}
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item $\frac{\partial P_{im}}{\partial S_{ij}} = P_{im} (\delta_{jm} - P_{ij}) \implies \bar{S}_{ij} = P_{ij} \Big( \bar{P}_{ij} - \underbrace{\textstyle\sum_m P_{im} \bar{P}_{im}}_{D_i} \Big)$
+            \item Collapses intimidating $N \times N$ matrix differentiation into transparent scalar calculus!
+        \end{itemize}
+    }
+\end{minipage}
+
+\vspace{0.06in}
+
+% ==============================================================================
+% ROW 2: The Core Derivation & Handwriting Canvas
+% ==============================================================================
+\customcard{1.5pt}{canvasborder}{canvasbg}{
+    {\large\bfseries\color{accentblue}[LIVE DERIVATION] Associative Index Contraction: Proving $D_i = O_{id} \bar{O}_{id}$ in 3 Lines}\\[4pt]
+    \noindent
+    \begin{minipage}[t]{0.31\textwidth}
+        \textbf{\color{textdark}The Memory Bottleneck:} \\[2pt]
+        \small\color{textgray}
+        Directly calculating $D_i = \sum_m P_{im} \bar{P}_{im}$ requires materializing the full intermediate gradient matrix $\bar{P} \in \mathbb{R}^{L \times L}$ into High-Bandwidth Memory (HBM).\\
+        Memory explodes to $\mathcal{O}(L^2)$, annihilating FlashAttention's constant memory advantage!\\[6pt]
+        \textbf{\color{accentblue}Forward Output}: $O_{id} = P_{im} V_{md}$\\
+        \textbf{\color{accentblue}Upstream Gradient}: $\bar{P}_{im} = \bar{O}_{id} V_{md}$
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[t]{0.67\textwidth}
+        \setlength{\fboxrule}{0.8pt}%
+        \setlength{\fboxsep}{7pt}%
+        \fcolorbox{boxborder}{bglight}{%
+            \begin{minipage}[c][1.35in][t]{\dimexpr\linewidth-2\fboxrule-2\fboxsep\relax}
+                \vspace{0.02in}
+                {\color{textgray}\textit{Step 1: Substitute upstream gradient $\bar{P}_{im} = \bar{O}_{id} V_{md}$ into the scalar reduction sum $\dots$}}\\[0.30in]
+                {\color{textgray}\textit{Step 2: Swap summation order via associativity, grouping sequence dummy index $m$ in parentheses $\dots$}}\\[0.30in]
+                {\color{textgray}\textit{Step 3: Recognize forward definition $(P_{im} V_{md}) \equiv O_{id}$, simplifying to $D_i = O_{id} \bar{O}_{id}$ and boxed!}}
+            \end{minipage}%
+        }
+    \end{minipage}
+}
+
+\vspace{0.06in}
+
+% ==============================================================================
+% BOTTOM ROW: Engineering Takeaway & Unit Test Verification
+% ==============================================================================
+\noindent
+\begin{minipage}[t]{0.50\textwidth}
+    \customcard{1pt}{boxborder}{boxbg}{
+        {\bfseries\color{accentblue}[SysML Takeaway] Hardware-Aware Kernel Architecture}\\[2pt]
+        \small
+        \begin{itemize}\setlength{\itemsep}{1pt}
+            \item \textbf{Zero HBM Footprint}: The backward kernel never instantiates $L \times L$ attention matrices $P$, $\bar{P}$, or $\bar{S}$ in global memory.
+            \item \textbf{Online SRAM Reduction}: Precompute lightweight $\mathcal{O}(L)$ vector $D_i = \sum_d O_{id} \bar{O}_{id}$ in $\mathcal{O}(L D_v)$. Enables localized computation of $\bar{S}_{ij}$ inside SRAM tiles.
+            \item \textbf{Triton / CUDA Mapping}: Outer index $i$ maps to threadblock program grid; feature index $d$ accumulates locally in GPU register files.
+        \end{itemize}
+    }
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.484\textwidth}
+    \customcard{1pt}{boxborder}{boxbg}{
+        {\bfseries\color{goodgreen}[Unit Test] 10-Line PyTorch Einsum Numerical Equivalence}\\[2pt]
+        \small\ttfamily
+        \color{textgray}\# Assert standard rowsum(P * dP) == dot(O, dO)\color{textdark} \\
+        S = torch.einsum('bik,bjk->bij', Q, K) / (D**0.5) \\
+        P = torch.softmax(S, dim=-1) \\
+        O = torch.einsum('bij,bjd->bid', P, V) \\
+        dO = torch.randn\_like(O) \\
+        dP = torch.einsum('bid,bjd->bij', dO, V) \\[2pt]
+        \color{badred}D\_matrix = (P * dP).sum(dim=-1, keepdim=True) \color{textgray}\# O(L\textasciicircum 2) HBM \\
+        \color{goodgreen}D\_flash  = (O * dO).sum(dim=-1, keepdim=True) \color{textgray}\# O(L) via associativity! \\[2pt]
+        \color{accentblue}assert torch.allclose(D\_matrix, D\_flash, atol=1e-5)
+    }
+\end{minipage}
+
+\end{document}

@@ -1,0 +1,275 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[top=0.8in, bottom=0.8in, left=0.8in, right=0.8in]{geometry}
+\usepackage{amsmath, amssymb, amsfonts, mathtools}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+
+% Clean Academic Color Palette
+\definecolor{brandblue}{HTML}{0969DA}
+\definecolor{darkslate}{HTML}{1F2328}
+\definecolor{alertred}{HTML}{CF222E}
+\definecolor{emerald}{HTML}{1A7F37}
+\definecolor{cardbg}{HTML}{F6F8FA}
+\definecolor{cardborder}{HTML}{D0D7DE}
+\definecolor{quoteleft}{HTML}{0969DA}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=brandblue,
+    citecolor=brandblue,
+    urlcolor=brandblue
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% Custom Styled Callout Box (Always forces a new paragraph before and after)
+\newcommand{\calloutbox}[3]{%
+    \par\medskip\noindent
+    \setlength{\fboxrule}{1pt}%
+    \setlength{\fboxsep}{10pt}%
+    \fcolorbox{#1}{#2}{%
+        \begin{minipage}{\dimexpr\linewidth-2\fboxrule-2\fboxsep\relax}
+            #3
+        \end{minipage}%
+    }%
+    \par\medskip
+}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE & HEADER
+% ==============================================================================
+{\LARGE\bfseries Complete Tensor Calculus Derivation of FlashAttention\\[2pt] Backward Pass}\\[6pt]
+{\large\color{brandblue}\textsf{From Continuum Mechanics \& Index Contraction to Hardware-Aware SRAM Tiling}}\\[6pt]
+{\small\color{darkslate}\textbf{Author Positioning}: Computational Mechanics \& Tensor Analysis applied to Modern AI Architectures}\\
+{\small\color{gray}\texttt{github.com/tensor-calculus-for-ai}}
+\vspace{0.08in}
+\hrule
+\vspace{0.08in}
+
+% ==============================================================================
+% 0. NOTATION & CONVENTIONS
+% ==============================================================================
+\section*{0. Tensor Coordinate Spaces \& Index Conventions}
+
+\begin{itemize}
+    \item \textbf{Tensors}: Query $Q \in \mathbb{R}^{L \times D_k}$ ($Q_{ik}$), Key $K \in \mathbb{R}^{L \times D_k}$ ($K_{jk}$), Value $V \in \mathbb{R}^{L \times D_v}$ ($V_{jd}$), Output $O \in \mathbb{R}^{L \times D_v}$ ($O_{id}$), and Scalar Loss $\mathcal{L} \in \mathbb{R}$.
+    \item \textbf{Coordinate Indices}:
+    \begin{itemize}
+        \item $i \in [1, L]$: Query sequence axis (primary free row index throughout).
+        \item $j \in [1, L]$: Key / Value sequence axis (dummy contraction index).
+        \item $m, n \in [1, L]$: Softmax normalization axes (dummy summation indices for denominator and Jacobian).
+        \item $k \in [1, D_k]$: Hidden feature dimension axis.
+        \item $d \in [1, D_v]$: Output channel dimension axis.
+    \end{itemize}
+    \item \textbf{Einstein Summation Convention}: A repeated Latin index within a monomial implies summation over its full range: $A_k B_k \equiv \sum_{k=1}^D A_k B_k$.
+    \item \textbf{LHS Free Index Invariance}: When an index is explicitly present on the Left-Hand Side (e.g., $i$ in $P_{ij} = \dots$), its counterpart on the RHS is strictly constrained as a free index; no redundant brackets are required.
+    \item \textbf{Adjoint Gradient Definition}: For any tensor variable $X$, its loss sensitivity is denoted with an overline:
+    $$\bar{X} \equiv \frac{\partial \mathcal{L}}{\partial X} \implies d\mathcal{L} = \bar{X} \, dX$$
+\end{itemize}
+
+% ==============================================================================
+% 1. FORWARD PASS
+% ==============================================================================
+\section*{1. Forward Kinematics (Forward Pass)}
+
+\textbf{Step 1.1: Scaled Unnormalized Scores ($S$)}
+$$S_{ij} = \frac{1}{\sqrt{D_k}} \sum_{k=1}^{D_k} Q_{ik} K_{jk} = \frac{1}{\sqrt{D_k}} Q_{ik} K_{jk}$$
+
+\textbf{Step 1.2: Row-wise Partition Function ($L$)}
+$$L_i = \sum_{n=1}^L \exp(S_{in})$$
+
+\textbf{Step 1.3: Softmax Attention Probabilities ($P$)}
+$$P_{ij} = \frac{\exp(S_{ij})}{L_i} = \frac{\exp(S_{ij})}{\sum_{n=1}^L \exp(S_{in})} \quad \left(P_{ij} > 0, \quad \sum_{j=1}^L P_{ij} = 1\right)$$
+
+\textbf{Step 1.4: Attention Output Contraction ($O$)}
+$$O_{id} = \sum_{j=1}^L P_{ij} V_{jd} = P_{ij} V_{jd}$$
+
+% ==============================================================================
+% 2. OUTPUT ADJOINT BRANCHING
+% ==============================================================================
+\section*{2. Output Loss Variation and Adjoint Branching ($\bar{V}$ and $\bar{P}$)}
+
+Given the upstream sensitivity tensor $\bar{O}_{id} \equiv \frac{\partial \mathcal{L}}{\partial O_{id}}$, the total differential of the loss is:
+$$d\mathcal{L} = \bar{O}_{id} \, dO_{id}$$
+
+\textbf{Step 2.1: Product Rule on $O_{id} = P_{im} V_{md}$}
+$$dO_{id} = d(P_{im} V_{md}) = (dP_{im}) V_{md} + P_{im} (dV_{md})$$
+
+\textbf{Step 2.2: Substitute into Loss Differential}
+$$d\mathcal{L} = \bar{O}_{id} \Big( (dP_{im}) V_{md} + P_{im} (dV_{md}) \Big) = \Big( \bar{O}_{id} V_{md} \Big) dP_{im} + \Big( P_{im} \bar{O}_{id} \Big) dV_{md}$$
+
+By total differential duality, $d\mathcal{L} \equiv \bar{P}_{im} dP_{im} + \bar{V}_{md} dV_{md}$. Matching coefficients yields:
+
+\calloutbox{cardborder}{cardbg}{%
+    \textbf{1. Gradient with respect to Value ($V$)} (Renaming dummy index $m \to j$):
+    $$\boxed{\bar{V}_{jd} = P_{ij} \, \bar{O}_{id}}$$
+    \textit{This is a terminal parameter gradient. It accumulates directly into HBM.}
+    
+    \vspace{6pt}
+    \textbf{2. Gradient with respect to Attention Matrix ($P$)}:
+    $$\boxed{\bar{P}_{im} = \bar{O}_{id} \, V_{md}}$$
+    \textit{This is an intermediate sensitivity that must backpropagate through Softmax to reach $S$, $Q$, and $K$.}
+}
+
+% ==============================================================================
+% 3. SOFTMAX JACOBIAN
+% ==============================================================================
+\section*{3. Microscopic Softmax Jacobian via Kronecker Delta}
+
+To backpropagate $\bar{P}_{im}$ into $S_{ij}$, we compute the exact Jacobian $\frac{\partial P_{im}}{\partial S_{ij}}$.
+Let $u = \exp(S_{im})$ and $v = L_i = \sum_{n=1}^L \exp(S_{in})$ such that $P_{im} = \frac{u}{v}$.
+
+\textbf{Step 3.1: Quotient Rule}
+$$\frac{\partial P_{im}}{\partial S_{ij}} = \frac{\frac{\partial u}{\partial S_{ij}} \cdot v - u \cdot \frac{\partial v}{\partial S_{ij}}}{v^2}$$
+
+\textbf{Step 3.2: Differentiating Numerator ($u$) via Coordinate Orthogonality}
+$$\frac{\partial u}{\partial S_{ij}} = \frac{\partial \exp(S_{im})}{\partial S_{im}} \cdot \frac{\partial S_{im}}{\partial S_{ij}} = \exp(S_{im}) \cdot \delta_{jm} \quad \text{where} \quad \delta_{jm} = \begin{cases} 1, & m = j \\ 0, & m \neq j \end{cases}$$
+
+\textbf{Step 3.3: Differentiating Denominator ($v$) via Sifting Property}
+$$\frac{\partial v}{\partial S_{ij}} = \sum_{n=1}^L \frac{\partial \exp(S_{in})}{\partial S_{ij}} = \sum_{n=1}^L \exp(S_{in}) \cdot \delta_{jn} = \exp(S_{ij})$$
+
+\textbf{Step 3.4: Algebraic Expansion and Recombination}
+$$\begin{aligned}
+\frac{\partial P_{im}}{\partial S_{ij}} &= \frac{\Big[ \delta_{jm} \exp(S_{im}) \Big] L_i - \Big[ \exp(S_{im}) \Big] \Big[ \exp(S_{ij}) \Big]}{L_i^2} \\[6pt]
+&= \delta_{jm} \left( \frac{\exp(S_{im})}{L_i} \right) - \left( \frac{\exp(S_{im})}{L_i} \right) \left( \frac{\exp(S_{ij})}{L_i} \right)
+\end{aligned}$$
+
+Substituting the forward definitions $P_{im} = \frac{\exp(S_{im})}{L_i}$ and $P_{ij} = \frac{\exp(S_{ij})}{L_i}$ gives $\frac{\partial P_{im}}{\partial S_{ij}} = \delta_{jm} P_{im} - P_{im} P_{ij}$. Factoring out $P_{im}$:
+
+\calloutbox{cardborder}{cardbg}{%
+    $$\boxed{\frac{\partial P_{im}}{\partial S_{ij}} = P_{im} (\delta_{jm} - P_{ij})}$$
+}
+
+% ==============================================================================
+% 4. PULLBACK TO S
+% ==============================================================================
+\section*{4. Backpropagating from $\bar{P}$ to Score Gradient $\bar{S}$}
+
+The full loss variation across all active branches is:
+$$d\mathcal{L} = \sum_{i=1}^L \sum_{m=1}^L \bar{P}_{im} \, dP_{im} + \sum_{j=1}^L \sum_{d=1}^{D_v} \bar{V}_{jd} \, dV_{jd}$$
+
+Because Value $V$ is an independent input to the layer ($V = X W_V$), $\frac{\partial V_{jd}}{\partial S_{ij}} = 0$. The variation $dV_{jd}$ is strictly orthogonal to $S$. Meanwhile, $P_{im}$ depends entirely on $S$:
+$$dP_{im} = \sum_{j=1}^L \frac{\partial P_{im}}{\partial S_{ij}} \, dS_{ij}$$
+
+\textbf{Step 4.1: Substitute $dP_{im}$ and Swap Summation Order}
+$$\begin{aligned}
+d\mathcal{L} &= \sum_{i=1}^L \sum_{m=1}^L \bar{P}_{im} \left( \sum_{j=1}^L \frac{\partial P_{im}}{\partial S_{ij}} \, dS_{ij} \right) + \sum_{j, d} \bar{V}_{jd} \, dV_{jd} \\[6pt]
+&= \sum_{i=1}^L \sum_{j=1}^L \left( \sum_{m=1}^L \bar{P}_{im} \frac{\partial P_{im}}{\partial S_{ij}} \right) dS_{ij} + \sum_{j, d} \bar{V}_{jd} \, dV_{jd}
+\end{aligned}$$
+
+By definition $d\mathcal{L} \equiv \sum_{i, j} \bar{S}_{ij} \, dS_{ij} + \sum_{j, d} \bar{V}_{jd} \, dV_{jd}$, we isolate $\bar{S}_{ij}$:
+$$\bar{S}_{ij} = \sum_{m=1}^L \bar{P}_{im} \frac{\partial P_{im}}{\partial S_{ij}} = \sum_{m=1}^L \bar{P}_{im} \Big[ P_{im} (\delta_{jm} - P_{ij}) \Big] = \sum_{m=1}^L \bar{P}_{im} P_{im} \delta_{jm} - \sum_{m=1}^L \bar{P}_{im} P_{im} P_{ij}$$
+
+\textbf{Step 4.2: Kronecker Sifting and Scalar Factorization}
+\begin{enumerate}
+    \item \textbf{First term}: Sifting property collapses $m \to j$, yielding $\sum_{m=1}^L \bar{P}_{im} P_{im} \delta_{jm} = P_{ij} \bar{P}_{ij}$.
+    \item \textbf{Second term}: $P_{ij}$ is independent of $m$ and factors out, giving $P_{ij} \left( \sum_{m=1}^L P_{im} \bar{P}_{im} \right)$.
+\end{enumerate}
+
+Combining both terms:
+
+\calloutbox{cardborder}{cardbg}{%
+    $$\boxed{\bar{S}_{ij} = P_{ij} (\bar{P}_{ij} - D_i)} \quad \text{where} \quad \boxed{D_i \equiv \sum_{m=1}^L P_{im} \bar{P}_{im} = P_{im} \bar{P}_{im}}$$
+}
+
+% ==============================================================================
+% 5. THE FLASH ASSOCIATIVITY MIRACLE
+% ==============================================================================
+\section*{5. The FlashAssociativity Miracle: Eliminating $\bar{P}$ from $D_i$}
+
+\textbf{The Memory Bottleneck}: Naively calculating $D_i = \sum_m P_{im} \bar{P}_{im}$ demands instantiating the full matrix $\bar{P} \in \mathbb{R}^{L \times L}$ in global memory (HBM), incurring an $\mathcal{O}(L^2)$ memory footprint.
+
+\textbf{Proof of Algebraic Elimination}:
+Substitute $\bar{P}_{im} = \sum_{d=1}^{D_v} \bar{O}_{id} V_{md}$ into the definition of $D_i$:
+$$D_i = \sum_{m=1}^L P_{im} \left( \sum_{d=1}^{D_v} \bar{O}_{id} V_{md} \right) = \sum_{m=1}^L \sum_{d=1}^{D_v} P_{im} \cdot \bar{O}_{id} \cdot V_{md}$$
+
+By scalar associativity and commutativity, swap the summation order over $m$ and $d$:
+$$D_i = \sum_{d=1}^{D_v} \left( \sum_{m=1}^L P_{im} V_{md} \right) \bar{O}_{id}$$
+
+Recognize that the parenthesized term is identically the forward output: $\sum_{m=1}^L P_{im} V_{md} \equiv O_{id}$.
+Therefore:
+
+\calloutbox{cardborder}{cardbg}{%
+    $$\boxed{D_i = \sum_{d=1}^{D_v} O_{id} \, \bar{O}_{id} \equiv O_{id} \, \bar{O}_{id}}$$
+    \textbf{Takeaway}: $\bar{P}$ is completely eliminated from the computation of $D_i$. The reduction collapses from an $\mathcal{O}(L^2)$ matrix traversal into a lightweight $\mathcal{O}(L D_v)$ vector dot-product using tensors already resident in memory ($O$ and $\bar{O}$).
+}
+
+% ==============================================================================
+% 6. THE BRIDGE TO HARDWARE: WHY THIS ENABLES FLASHATTENTION
+% ==============================================================================
+\section*{6. The Bridge to Hardware: Why This Identity Enables FlashAttention}
+
+\calloutbox{quoteleft}{cardbg}{%
+    \itshape\color{darkslate}
+    ``Many assume the crux of FlashAttention lies solely in clever CUDA tile loops. It does not. Viewed as a static matrix product $\bar{Q} = \frac{1}{\sqrt{d}} \bar{S} K$, the gradient equation appears mathematically conventional. 
+    
+    \vspace{4pt}
+    What truly makes FlashAttention possible is proving that the computation of $\bar{S}_{ij}$ can be completely localized within an SRAM tile. And the sole mathematical prerequisite for this localization is swapping brackets via index associativity to replace the globally coupled row reduction $D_i = \sum_m P_{im} \bar{P}_{im}$ with the precomputable dot product $D_i = O_{id} \bar{O}_{id}$. 
+    
+    \vspace{4pt}
+    With this identity, the contraction $\bar{Q}_{ik} = \frac{1}{\sqrt{D_k}} \bar{S}_{ij} K_{jk}$ ceases to be a global HBM memory nightmare and becomes an independent, register-accumulated tile contraction.''
+}
+
+\textbf{How the Hardware Execution Flow Works in Practice}:
+\begin{enumerate}
+    \item \textbf{Global Precomputation}: Before launching tile loops, compute the 1D vector $D_i = \sum_d O_{id} \bar{O}_{id}$ globally in $\mathcal{O}(L D_v)$ time.
+    \item \textbf{SRAM Tile Loops}: GPU threadblocks iterate over tiles of Query ($i \in [T_i, T_i + B_r]$) and Key ($j \in [T_j, T_j + B_c]$):
+    \begin{itemize}
+        \item Load tiles of $Q, K, V$ and $\bar{O}$ into fast on-chip SRAM ($\approx 100\text{--}200\text{ KB}$).
+        \item Recompute local probabilities $P_{ij}^{\text{tile}} = \exp(S_{ij}^{\text{tile}} - \text{max}_i) / L_i$ in registers.
+        \item Form local gradient $\bar{P}_{ij}^{\text{tile}} = \bar{O}_{id}^{\text{tile}} V_{jd}^{\text{tile}}$ in registers.
+        \item Compute $\bar{S}_{ij}^{\text{tile}} = P_{ij}^{\text{tile}} (\bar{P}_{ij}^{\text{tile}} - D_i^{\text{tile}})$ using the precomputed $D_i^{\text{tile}}$.
+        \item Accumulate directly into parameter gradient buffers:
+        $$\bar{Q}_{ik}^{\text{tile}} \mathrel{+}= \frac{1}{\sqrt{D_k}} \bar{S}_{ij}^{\text{tile}} K_{jk}^{\text{tile}}, \qquad \bar{K}_{jk}^{\text{tile}} \mathrel{+}= \frac{1}{\sqrt{D_k}} \bar{S}_{ij}^{\text{tile}} Q_{ik}^{\text{tile}}$$
+        \item Discard $\bar{S}_{ij}^{\text{tile}}$ from SRAM registers immediately.
+    \end{itemize}
+    \item \textbf{Zero HBM Footprint}: The full $L \times L$ attention matrices $P$, $\bar{P}$, and $\bar{S}$ never materialize in global GPU memory.
+\end{enumerate}
+
+% ==============================================================================
+% 7. PULLBACK TO Q AND K
+% ==============================================================================
+\section*{7. Final Pullback to Query ($\bar{Q}$) and Key ($\bar{K}$)}
+
+Given $S_{ij} = \frac{1}{\sqrt{D_k}} Q_{ik} K_{jk}$, the score variation is:
+$$dS_{ij} = \frac{1}{\sqrt{D_k}} \Big( (dQ_{ik}) K_{jk} + Q_{ik} (dK_{jk}) \Big)$$
+
+Substitute into $d\mathcal{L} = \bar{S}_{ij} \, dS_{ij}$:
+$$\begin{aligned}
+d\mathcal{L} &= \bar{S}_{ij} \left[ \frac{1}{\sqrt{D_k}} (dQ_{ik}) K_{jk} + \frac{1}{\sqrt{D_k}} Q_{ik} (dK_{jk}) \right] \\[6pt]
+&= \left( \frac{1}{\sqrt{D_k}} \bar{S}_{ij} K_{jk} \right) dQ_{ik} + \left( \frac{1}{\sqrt{D_k}} \bar{S}_{ij} Q_{ik} \right) dK_{jk}
+\end{aligned}$$
+
+By duality $d\mathcal{L} \equiv \bar{Q}_{ik} dQ_{ik} + \bar{K}_{jk} dK_{jk}$, we extract the final terminal gradients:
+
+\calloutbox{cardborder}{cardbg}{%
+    $$\boxed{\bar{Q}_{ik} = \frac{1}{\sqrt{D_k}} \bar{S}_{ij} K_{jk}} \qquad \text{(Contract Key sequence axis } j \text{)}$$
+    $$\boxed{\bar{K}_{jk} = \frac{1}{\sqrt{D_k}} \bar{S}_{ij} Q_{ik}} \qquad \text{(Contract Query sequence axis } i \text{)}$$
+}
+
+% ==============================================================================
+% 8. MASTER SUMMARY
+% ==============================================================================
+\section*{8. Master Formulary Reference Table}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{llll}
+\toprule
+\textbf{Quantity} & \textbf{Tensor Equation} & \textbf{Contraction Axis} & \textbf{Hardware Residency} \\
+\midrule
+Value Gradient & $\bar{V}_{jd} = P_{ij} \bar{O}_{id}$ & Query Axis $i$ & Accumulate to HBM \\
+Row Reduction & $D_i = O_{id} \bar{O}_{id}$ & Channel Axis $d$ & Precomputed 1D vector ($\mathcal{O}(L)$) \\
+Score Gradient & $\bar{S}_{ij} = P_{ij} (\bar{O}_{id} V_{jd} - D_i)$ & Channel Axis $d$ & SRAM registers (Discarded) \\
+Query Gradient & $\bar{Q}_{ik} = \frac{1}{\sqrt{D_k}} \bar{S}_{ij} K_{jk}$ & Key Axis $j$ & Accumulate to HBM \\
+Key Gradient & $\bar{K}_{jk} = \frac{1}{\sqrt{D_k}} \bar{S}_{ij} Q_{ik}$ & Query Axis $i$ & Accumulate to HBM \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

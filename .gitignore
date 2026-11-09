@@ -1,0 +1,11 @@
+# LaTeX intermediate files
+*.aux
+*.log
+*.out
+*.synctex.gz
+missfont.log
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/
