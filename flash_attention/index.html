@@ -283,8 +283,8 @@
         \[ \frac{\partial u}{\partial S_{ij}} = \exp(S_{im})\,\frac{\partial S_{im}}{\partial S_{ij}} \]
         Because \(S_{i1}, \dots, S_{iL}\) are independent coordinates in row \(i\), there are two cases:
         <ul>
-          <li><strong>If \(j = m\):</strong> \(S_{im}\) and \(S_{ij}\) are the same variable, so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 1 \;\Rightarrow\; \dfrac{\partial u}{\partial S_{ij}} = \exp(S_{im})\).</li>
-          <li><strong>If \(j \neq m\):</strong> \(S_{im}\) does not depend on \(S_{ij}\), so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 0 \;\Rightarrow\; \dfrac{\partial u}{\partial S_{ij}} = 0\).</li>
+          <li><strong>If \(j = m\):</strong> \(S_{im}\) and \(S_{ij}\) are the same variable, so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 1\).</li>
+          <li><strong>If \(j \neq m\):</strong> \(S_{im}\) does not depend on \(S_{ij}\), so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 0\).</li>
         </ul>
         Combining both cases via the Kronecker delta \(\delta_{jm} = \begin{cases} 1, & j=m \\ 0, & j\neq m \end{cases}\):
         \[ \frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm} \quad\Longrightarrow\quad \frac{\partial u}{\partial S_{ij}} = \exp(S_{im})\, \delta_{jm} \]
