@@ -26,15 +26,21 @@ Complete mathematical derivation of the FlashAttention backward kernel, comparin
 - **[Interactive Visualizer (`matrix_vs_tensor_flash_attention.html`)](flash_attention/matrix_vs_tensor_flash_attention.html)**: Clean, horizontally-aligned side-by-side comparison with expandable intermediate steps and HBM/SRAM memory maps.
 - **[Complete Academic Derivation PDF](flash_attention/flash_attention_complete_derivation.pdf)**: 6-page comprehensive document detailing variations, the softmax Jacobian, the row-reduction invariant $D_i = O_{id}\bar{O}_{id}$, and hardware tiling.
 
+### Topic 02: Sparse Attention Backward Pass (`sparse_attention/`)
+Interactive and mathematical comparison showing why $\bar{Q}$ sweeps rows (CSR), $\bar{K}/\bar{V}$ sweep columns (CSC), and how index notation reveals `atomicAdd` write conflicts hidden by matrix transposes.
+
+- **[Interactive Row-vs-Column Visualizer (`sparse_attention_rows_vs_columns.html`)](sparse_attention/sparse_attention_rows_vs_columns.html)**: Interactive $6 \times 6$ sparse mask grid demonstrating row sweeps (CSR), atomic write contention (`atomicAdd`), and lock-free column sweeps (CSC).
+
 ---
 
 ## 🗺️ Roadmap / Upcoming Topics
 
 - [x] **01. FlashAttention**: Exact backward pass, row reduction $D_i$, and on-chip SRAM lifecycle.
-- [ ] **02. Rotary Position Embeddings (RoPE)**: Tensor contractions, complex vector space isomorphism, and head-wise rotations.
-- [ ] **03. Normalization Layers**: LayerNorm and RMSNorm adjoint derivations in index notation.
-- [ ] **04. GQA & MQA**: Grouped-query and multi-query attention tensor projections and memory reuse.
-- [ ] **05. SwiGLU & Feedforward Blocks**: Fused elementwise gate gradients in Einstein notation.
+- [x] **02. Sparse Attention**: Masking $M_{ij}$, CSR vs. CSC schedules, and hardware write-conflict analysis.
+- [ ] **03. Rotary Position Embeddings (RoPE)**: Tensor contractions, complex vector space isomorphism, and head-wise rotations.
+- [ ] **04. Normalization Layers**: LayerNorm and RMSNorm adjoint derivations in index notation.
+- [ ] **05. GQA & MQA**: Grouped-query and multi-query attention tensor projections and memory reuse.
+- [ ] **06. SwiGLU & Feedforward Blocks**: Fused elementwise gate gradients in Einstein notation.
 
 ---
 

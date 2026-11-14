@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sparse Attention Backward Pass · Rows vs. Columns</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.querySelector('.static'),{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --text: #1f2328;
+      --muted: #656d76;
+      --faint: #8c959f;
+      --line: #d8dee4;
+      --line-soft: #eaeef2;
+      --panel: #f6f8fa;
+      --accent: #0969da;
+      --on: #ddf4ff;
+      --on-b: #54aeff;
+      --sel: #0969da;
+      --ok: #1a7f37;
+      --ok-bg: #dafbe1;
+      --hot: #cf222e;
+      --hot-bg: #ffebe9;
+      --hit: #bf8700;
+      --hit-bg: #fff8c5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fff;
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 15px
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 40px 32px 64px
+    }
+
+    .topnav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap
+    }
+
+    .topnav a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 5px 12px;
+      transition: all .15s
+    }
+
+    .topnav a:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    .topnav a.active {
+      background: var(--panel);
+      color: var(--text);
+      border-color: var(--text);
+      font-weight: 600
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 22px;
+      margin-bottom: 28px
+    }
+
+    header h1 {
+      font-size: 25px;
+      font-weight: 700;
+      letter-spacing: -.015em
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 14px;
+      max-width: 880px
+    }
+
+    section.step {
+      margin-bottom: 36px
+    }
+
+    .step-title {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px
+    }
+
+    .step-num {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 8px;
+      white-space: nowrap
+    }
+
+    .step-title h2 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -.01em
+    }
+
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden
+    }
+
+    .cell-p {
+      padding: 16px 20px;
+      min-width: 0
+    }
+
+    .cell-p+.cell-p {
+      border-left: 1px solid var(--line)
+    }
+
+    .cell-p h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 6px
+    }
+
+    .cell-p p {
+      margin: 6px 0
+    }
+
+    .katex-display {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 2px 0;
+      margin: .6em 0
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .rule {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 16px;
+      background: #fff
+    }
+
+    .rule b {
+      font-weight: 600
+    }
+
+    details {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff
+    }
+
+    details>summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px 16px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--accent);
+      user-select: none
+    }
+
+    details>summary::-webkit-details-marker {
+      display: none
+    }
+
+    details>summary::before {
+      content: '▸';
+      display: inline-block;
+      width: 16px;
+      transition: transform .15s
+    }
+
+    details[open]>summary::before {
+      transform: rotate(90deg)
+    }
+
+    details[open]>summary {
+      border-bottom: 1px solid var(--line)
+    }
+
+    .sub {
+      display: grid;
+      grid-template-columns: 1fr 1fr
+    }
+
+    .sub .label {
+      grid-column: 1 / -1;
+      background: var(--panel);
+      padding: 7px 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      border-top: 1px solid var(--line-soft)
+    }
+
+    .sub .label:first-child {
+      border-top: none
+    }
+
+    .sub .c {
+      padding: 10px 20px 12px;
+      min-width: 0;
+      font-size: 14px
+    }
+
+    .sub .c+.c {
+      border-left: 1px solid var(--line-soft)
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 10px 14px;
+      text-align: left;
+      vertical-align: middle
+    }
+
+    th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      font-weight: 600;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line)
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none
+    }
+
+    .tablewrap {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      overflow-x: auto
+    }
+
+    /* ---------- Interactive widget ---------- */
+    .widget {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      flex-wrap: wrap
+    }
+
+    .tabs button {
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      border-right: 1px solid var(--line);
+      padding: 11px 18px;
+      cursor: pointer
+    }
+
+    .tabs button.active {
+      background: #fff;
+      color: var(--text);
+      box-shadow: inset 0 -2px 0 var(--accent)
+    }
+
+    .tabs button:hover {
+      color: var(--accent)
+    }
+
+    .wbody {
+      display: grid;
+      grid-template-columns: auto 1fr
+    }
+
+    .wleft {
+      padding: 20px 24px;
+      border-right: 1px solid var(--line)
+    }
+
+    .wright {
+      padding: 20px 24px;
+      min-width: 0
+    }
+
+    .ctl {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--muted)
+    }
+
+    .ctl button {
+      font: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      min-width: 34px
+    }
+
+    .ctl button:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    .ctl button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff
+    }
+
+    .ctl .sep {
+      width: 1px;
+      height: 22px;
+      background: var(--line);
+      margin: 0 6px
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: 44px repeat(6, 52px) 30px 66px;
+      grid-template-rows: 26px repeat(6, 52px) 26px 52px;
+      gap: 4px;
+      align-items: center;
+      justify-items: center
+    }
+
+    #grid .clab,
+    #grid .rlab {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 500;
+      transition: color .15s
+    }
+
+    #grid .clab.sel,
+    #grid .rlab.sel {
+      color: var(--sel);
+      font-weight: 700
+    }
+
+    #grid .cell {
+      width: 52px;
+      height: 52px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+      background: #fafbfc;
+      border: 1px dashed var(--line-soft);
+      color: #c9d1d9
+    }
+
+    #grid .cell.on {
+      background: var(--on);
+      border: 1px solid var(--on-b);
+      color: #0550ae
+    }
+
+    #grid .cell.dim {
+      opacity: .28
+    }
+
+    #grid .cell.on.sel {
+      background: var(--sel);
+      border-color: var(--sel);
+      color: #fff;
+      font-weight: 600
+    }
+
+    #grid .cell.on.hit {
+      background: var(--hit-bg);
+      border: 2px solid var(--hit);
+      color: #7d4e00;
+      font-weight: 600
+    }
+
+    #grid .cell.on.hit.hot {
+      background: var(--hot-bg);
+      border-color: var(--hot);
+      color: var(--hot)
+    }
+
+    #grid .arr {
+      color: #d0d7de;
+      font-size: 18px;
+      transition: color .15s
+    }
+
+    #grid .arr.sel {
+      color: var(--sel)
+    }
+
+    #grid .arr.hot {
+      color: var(--hot)
+    }
+
+    #grid .obox {
+      width: 100%;
+      height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      font-size: 14px;
+      transition: all .15s;
+      position: relative
+    }
+
+    #grid .obox.k {
+      width: 52px
+    }
+
+    #grid .obox.dim {
+      opacity: .35
+    }
+
+    #grid .obox.ok {
+      border: 2px solid var(--ok);
+      background: var(--ok-bg)
+    }
+
+    #grid .obox.hot {
+      border: 2px solid var(--hot);
+      background: var(--hot-bg)
+    }
+
+    #grid .badge {
+      position: absolute;
+      top: -9px;
+      right: -9px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0 6px;
+      line-height: 18px;
+      color: #fff;
+      background: var(--ok);
+      display: none
+    }
+
+    #grid .obox.hot .badge {
+      background: var(--hot);
+      display: block
+    }
+
+    #grid .obox.ok .badge.show {
+      display: block
+    }
+
+    #grid .ohead {
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px
+    }
+
+    .info h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px
+    }
+
+    .info p {
+      margin: 8px 0;
+      font-size: 14px
+    }
+
+    .info .eqbox {
+      background: var(--panel);
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      padding: 6px 14px;
+      margin: 10px 0;
+      overflow-x: auto
+    }
+
+    .writes {
+      list-style: none;
+      margin: 8px 0;
+      font-size: 14px
+    }
+
+    .writes li {
+      padding: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0 7px;
+      line-height: 18px;
+      color: #fff
+    }
+
+    .tag.hot {
+      background: var(--hot)
+    }
+
+    .tag.ok {
+      background: var(--ok)
+    }
+
+    .storage {
+      margin-top: 18px;
+      border-top: 1px solid var(--line-soft);
+      padding-top: 14px
+    }
+
+    .storage h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin: 10px 0 6px
+    }
+
+    .storage h4 em {
+      font-style: normal;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0
+    }
+
+    .strip {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      transition: opacity .15s
+    }
+
+    .strip.dim {
+      opacity: .35
+    }
+
+    .grp {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px
+    }
+
+    .grp .gl {
+      font-size: 10.5px;
+      color: var(--faint)
+    }
+
+    .grp .bx {
+      display: flex;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      overflow: hidden
+    }
+
+    .grp .bx span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--line-soft);
+      background: #fff;
+      transition: all .15s
+    }
+
+    .grp .bx span:last-child {
+      border-right: none
+    }
+
+    .grp.sel .bx {
+      border-color: var(--sel)
+    }
+
+    .grp.sel .bx span {
+      background: var(--sel);
+      color: #fff
+    }
+
+    .grp.sel .gl {
+      color: var(--sel);
+      font-weight: 600
+    }
+
+    .grp .bx span.hit {
+      background: var(--hit-bg);
+      color: #7d4e00;
+      font-weight: 700
+    }
+
+    .ptr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
+    @media (max-width:1000px) {
+      .wbody {
+        grid-template-columns: 1fr
+      }
+
+      .wleft {
+        border-right: none;
+        border-bottom: 1px solid var(--line)
+      }
+    }
+
+    @media (max-width:900px) {
+
+      .pair,
+      .sub {
+        grid-template-columns: 1fr
+      }
+
+      .cell-p+.cell-p,
+      .sub .c+.c {
+        border-left: none;
+        border-top: 1px solid var(--line-soft)
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <nav class="topnav">
+      <a href="../flash_attention/matrix_vs_tensor_flash_attention.html">01 · FlashAttention</a>
+      <a href="sparse_attention_rows_vs_columns.html" class="active">02 · Sparse Attention</a>
+    </nav>
+
+    <header>
+      <h1>Sparse Attention Backward Pass: Rows vs. Columns</h1>
+      <p>Why the gradient of \(Q\) is computed row by row and the gradients of \(K, V\) column by column, and how this
+        is read directly from the free and summed indices. Uses only the indices \(i, j, k, d\) from the FlashAttention
+        derivation plus a binary mask \(M_{ij}\).</p>
+    </header>
+
+    <div class="static">
+
+      <!-- ============================================================ STEP 1 -->
+      <section class="step">
+        <div class="step-title"><span class="step-num">Step 1</span>
+          <h2>The Mask and the Forward Pass</h2>
+        </div>
+        <div class="pair">
+          <div class="cell-p">
+            <h4>Matrix calculus</h4>
+            <p>Mask \(M \in \{0,1\}^{L\times L}\): query \(i\) may attend to key \(j\) iff \(M_{ij}=1\).</p>
+            \[ S = \tfrac{1}{\sqrt{D_k}}\,QK^\top,\qquad P = \mathrm{diag}(\boldsymbol{\ell})^{-1}\big(M \odot
+            \exp(S)\big),\qquad O = PV \]
+            \[ \boldsymbol{\ell} = \big(M\odot\exp(S)\big)\mathbf{1} \]
+          </div>
+          <div class="cell-p">
+            <h4>Einstein notation tensor calculus</h4>
+            <p>Mask \(M_{ij}\in\{0,1\}\): query \(i\) may attend to key \(j\) iff \(M_{ij}=1\).</p>
+            \[ S_{ij} = \tfrac{1}{\sqrt{D_k}}\,Q_{ik}K_{jk},\qquad P_{ij} = \frac{M_{ij}\exp(S_{ij})}{\ell_i},\qquad
+            O_{id} = P_{ij}V_{jd} \]
+            \[ \ell_i = \textstyle\sum_{n} M_{in}\exp(S_{in}) \]
+          </div>
+        </div>
+        <p class="note" style="margin-top:8px">Running example (\(L=6\)): every token attends to the first token (an
+          attention sink) and to a local window of itself and the previous token. Then \(M_{ij}=0 \Rightarrow
+          P_{ij}=0\).</p>
+      </section>
+
+      <!-- ============================================================ STEP 2 -->
+      <section class="step">
+        <div class="step-title"><span class="step-num">Step 2</span>
+          <h2>Backward Equations</h2>
+        </div>
+        <div class="pair">
+          <div class="cell-p">
+            \[ \bar{S} = P\odot(\bar{P} - D\mathbf{1}^\top),\qquad D = (O\odot\bar{O})\mathbf{1} \]
+            \[ \bar{Q} = \tfrac{1}{\sqrt{D_k}}\,\bar{S}K,\qquad \bar{K} = \tfrac{1}{\sqrt{D_k}}\,\bar{S}^\top Q,\qquad
+            \bar{V} = P^\top\bar{O} \]
+          </div>
+          <div class="cell-p">
+            \[ \bar{S}_{ij} = P_{ij}(\bar{P}_{ij} - D_i),\qquad D_i = O_{id}\bar{O}_{id} \]
+            \[ \bar{Q}_{ik} = \tfrac{1}{\sqrt{D_k}}\,\bar{S}_{ij}K_{jk},\qquad \bar{K}_{jk} =
+            \tfrac{1}{\sqrt{D_k}}\,\bar{S}_{ij}Q_{ik},\qquad \bar{V}_{jd} = P_{ij}\bar{O}_{id} \]
+          </div>
+        </div>
+        <p class="note" style="margin-top:8px">These are the dense FlashAttention equations. The mask enters only
+          through \(P_{ij}\), and since \(\bar{S}_{ij}\) carries the factor \(P_{ij}\), it has the same zero pattern as
+          \(M_{ij}\).</p>
+        <details>
+          <summary>Detailed derivation with the mask</summary>
+          <div class="sub">
+            <div class="label">2.1 · Masked softmax Jacobian</div>
+            <div class="c">\[ J_i = \mathrm{diag}(\mathbf{p}_i) - \mathbf{p}_i\mathbf{p}_i^\top, \]
+              where \(\mathbf{p}_i\) is row \(i\) of \(P\), already zero wherever \(M_{ij}=0\).</div>
+            <div class="c">With \(\partial \ell_i/\partial S_{ij} = M_{ij}\exp(S_{ij})\) and \(\partial M_{im}/\partial
+              S_{ij}=0\):
+              \[ \frac{\partial P_{im}}{\partial S_{ij}} = \frac{\delta_{jm}M_{im}e^{S_{im}}\,\ell_i -
+              M_{im}e^{S_{im}}\,M_{ij}e^{S_{ij}}}{\ell_i^2} = P_{im}(\delta_{jm} - P_{ij}) \]</div>
+
+            <div class="label">2.2 · Gradient of the scores</div>
+            <div class="c">\[ \bar{\mathbf{s}}_i = J_i\,\bar{\mathbf{p}}_i = \mathbf{p}_i\odot\bar{\mathbf{p}}_i -
+              (\mathbf{p}_i^\top\bar{\mathbf{p}}_i)\,\mathbf{p}_i \]
+              \[ \bar{S} = P\odot(\bar{P} - D\mathbf{1}^\top) \]</div>
+            <div class="c">\[ \bar{S}_{ij} = \bar{P}_{im}\,P_{im}(\delta_{jm} - P_{ij}) = P_{ij}\bar{P}_{ij} -
+              P_{ij}\,P_{im}\bar{P}_{im} = P_{ij}(\bar{P}_{ij} - D_i) \]</div>
+
+            <div class="label">2.3 · Row reduction is unaffected by the mask</div>
+            <div class="c">\[ D = (P\odot\bar{P})\mathbf{1} = (P\odot\bar{O}V^\top)\mathbf{1} =
+              (O\odot\bar{O})\mathbf{1} \]</div>
+            <div class="c">\[ D_i = P_{im}\bar{P}_{im} = P_{im}\,\bar{O}_{id}V_{md} = (P_{im}V_{md})\,\bar{O}_{id} =
+              O_{id}\bar{O}_{id} \]</div>
+
+            <div class="label">2.4 · Zero pattern</div>
+            <div class="c">\(\bar{S}\) has the same zero pattern as \(P\), hence as \(M\).</div>
+            <div class="c">\(M_{ij}=0 \;\Rightarrow\; P_{ij}=0 \;\Rightarrow\; \bar{S}_{ij}=0.\)</div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ============================================================ STEP 3 -->
+      <section class="step">
+        <div class="step-title"><span class="step-num">Step 3</span>
+          <h2>Reading the Loop Structure from the Indices</h2>
+        </div>
+        <div class="pair">
+          <div class="cell-p">
+            \[ \bar{Q} = \tfrac{1}{\sqrt{D_k}}\,\bar{S}K \qquad\text{vs.}\qquad \bar{K} =
+            \tfrac{1}{\sqrt{D_k}}\,\bar{S}^\top Q \]
+            <p>The two products differ by a transpose of the same sparse matrix \(\bar{S}\). Which way the sparse matrix
+              has to be traversed for each product is not part of the expression.</p>
+          </div>
+          <div class="cell-p">
+            \[ \bar{Q}_{ik} = \frac{1}{\sqrt{D_k}}\sum_{j\,:\,M_{ij}=1}\bar{S}_{ij}K_{jk} \qquad\text{vs.}\qquad
+            \bar{K}_{jk} = \frac{1}{\sqrt{D_k}}\sum_{i\,:\,M_{ij}=1}\bar{S}_{ij}Q_{ik} \]
+            <p>\(\bar{Q}_{ik}\): free \(i\), summed \(j\), so fix row \(i\) and sweep across it.<br>
+              \(\bar{K}_{jk}\): free \(j\), summed \(i\), so fix column \(j\) and sweep down it.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <b>Free index</b> = which output a thread block owns (one block per value of the free index).<br>
+          <b>Summed index</b> = which direction it sweeps across the mask, visiting only entries with \(M_{ij}=1\).
+        </div>
+      </section>
+
+    </div><!-- /static -->
+
+    <!-- ============================================================ STEP 4 -->
+    <section class="step">
+      <div class="step-title"><span class="step-num">Step 4</span>
+        <h2>Interactive: Three Ways to Run the Backward Pass on a 6 × 6 Mask</h2>
+      </div>
+      <div class="widget">
+        <div class="tabs">
+          <button data-mode="row">1 · Q̄: sweep each row</button>
+          <button data-mode="atomic">2 · K̄ with row threads (atomicAdd)</button>
+          <button data-mode="col">3 · K̄: sweep each column</button>
+        </div>
+        <div class="wbody">
+          <div class="wleft">
+            <div class="ctl" id="ctl"></div>
+            <div id="grid"></div>
+            <div class="legend">
+              <span><i style="background:var(--on);border:1px solid var(--on-b)"></i><i
+                  style="all:unset;font-style:italic">M</i><sub>ij</sub> = 1 (stored)</span>
+              <span><i style="background:#fafbfc;border:1px dashed var(--line)"></i><i
+                  style="all:unset;font-style:italic">M</i><sub>ij</sub> = 0 (skipped)</span>
+              <span><i style="background:var(--sel)"></i>being summed</span>
+              <span><i style="background:var(--hot-bg);border:2px solid var(--hot)"></i>write conflict</span>
+            </div>
+          </div>
+          <div class="wright">
+            <div class="info" id="info"></div>
+            <div class="storage">
+              <h4>CSR · Compressed Sparse Row <em>— for each row \(i\), the columns \(j\) with \(M_{ij}=1\)</em></h4>
+              <div class="strip" id="csr"></div>
+              <div class="ptr">row_ptr = [0, 1, 3, 6, 9, 12, 15] &nbsp;·&nbsp; col_idx = entries above, row by row</div>
+              <h4>CSC · Compressed Sparse Column <em>— for each column \(j\), the rows \(i\) with \(M_{ij}=1\)</em></h4>
+              <div class="strip" id="csc"></div>
+              <div class="ptr">col_ptr = [0, 6, 8, 10, 12, 14, 15] &nbsp;·&nbsp; row_idx = entries above, column by
+                column</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="static2">
+      <!-- ============================================================ STEP 5 -->
+      <section class="step">
+        <div class="step-title"><span class="step-num">Step 5</span>
+          <h2>Two Storage Formats for the Same Mask</h2>
+        </div>
+        <div class="pair">
+          <div class="cell-p">
+            <h4>CSR (row-major list)</h4>
+            <p>Answers: <em>for query \(i\), which keys are active?</em> Row \(i\) is the slice
+              <code>col_idx[row_ptr[i-1] : row_ptr[i]]</code>.</p>
+            <p>Used by every equation whose free index is \(i\): \(O_{id} = P_{ij}V_{jd}\) and \(\bar{Q}_{ik} =
+              \tfrac{1}{\sqrt{D_k}}\bar{S}_{ij}K_{jk}\).</p>
+          </div>
+          <div class="cell-p">
+            <h4>CSC (column-major list)</h4>
+            <p>Answers: <em>for key \(j\), which queries attend to it?</em> Column \(j\) is the slice
+              <code>row_idx[col_ptr[j-1] : col_ptr[j]]</code>.</p>
+            <p>Used by every equation whose free index is \(j\): \(\bar{K}_{jk} =
+              \tfrac{1}{\sqrt{D_k}}\bar{S}_{ij}Q_{ik}\) and \(\bar{V}_{jd} = P_{ij}\bar{O}_{id}\).</p>
+          </div>
+        </div>
+        <p class="note" style="margin-top:8px">Both lists describe the same 15 nonzeros. Building CSC from CSR is a
+          one-time transpose of the index pattern (a counting sort over \(j\)). For a static mask it is done once and
+          reused across layers, heads and steps.</p>
+      </section>
+
+      <!-- ============================================================ STEP 6 -->
+      <section class="step">
+        <div class="step-title"><span class="step-num">Step 6</span>
+          <h2>From Tokens to Tiles</h2>
+        </div>
+        <div class="pair">
+          <div class="cell-p">
+            <p>Real kernels apply the same logic to \(B_r\times B_c\) tiles: replace \(M\) by a block mask over query
+              blocks \(I\) and key blocks \(J\). A tile is skipped when its block of \(M\) is all zero.</p>
+          </div>
+          <div class="cell-p">
+            <p>The forward and \(\bar{Q}\) loops iterate over the active key blocks \(J\) of each query block \(I\)
+              (CSR). The \(\bar{K}, \bar{V}\) loop iterates over the active query blocks \(I\) of each key block \(J\)
+              (CSC).</p>
+          </div>
+        </div>
+        <p class="note" style="margin-top:8px">A single fused backward kernel has to pick one traversal.
+          FlashAttention-2 sweeps columns, so it owns \(\bar{K}_J, \bar{V}_J\) and accumulates \(\bar{Q}\) with atomic
+          adds. Splash Attention provides separate \(\bar{Q}\) and \(\bar{K},\bar{V}\) backward kernels, so each output
+          is written by its owner.</p>
+      </section>
+
+      <!-- ============================================================ SUMMARY -->
+      <section class="step">
+        <div class="step-title"><span class="step-num">Summary</span>
+          <h2>Owner, Sweep Direction and Format for Each Quantity</h2>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Quantity</th>
+                <th>Matrix calculus</th>
+                <th>Einstein Notation Tensor Calculus</th>
+                <th>Free index (owner)</th>
+                <th>Summed index (sweep)</th>
+                <th>Format</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Output</td>
+                <td>\(O = PV\)</td>
+                <td>\(O_{id} = P_{ij}V_{jd}\)</td>
+                <td>\(i\)</td>
+                <td>\(j\) across row \(i\)</td>
+                <td>CSR</td>
+              </tr>
+              <tr>
+                <td>Row reduction</td>
+                <td>\(D = (O\odot\bar{O})\mathbf{1}\)</td>
+                <td>\(D_i = O_{id}\bar{O}_{id}\)</td>
+                <td>\(i\)</td>
+                <td>\(d\) (dense)</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Gradient of \(S\)</td>
+                <td>\(\bar{S} = P\odot(\bar{P} - D\mathbf{1}^\top)\)</td>
+                <td>\(\bar{S}_{ij} = P_{ij}(\bar{P}_{ij} - D_i)\)</td>
+                <td>\(i, j\)</td>
+                <td>— (elementwise)</td>
+                <td>per tile</td>
+              </tr>
+              <tr>
+                <td>Gradient of \(Q\)</td>
+                <td>\(\bar{Q} = \tfrac{1}{\sqrt{D_k}}\bar{S}K\)</td>
+                <td>\(\bar{Q}_{ik} = \tfrac{1}{\sqrt{D_k}}\bar{S}_{ij}K_{jk}\)</td>
+                <td>\(i\)</td>
+                <td>\(j\) across row \(i\)</td>
+                <td>CSR</td>
+              </tr>
+              <tr>
+                <td>Gradient of \(K\)</td>
+                <td>\(\bar{K} = \tfrac{1}{\sqrt{D_k}}\bar{S}^\top Q\)</td>
+                <td>\(\bar{K}_{jk} = \tfrac{1}{\sqrt{D_k}}\bar{S}_{ij}Q_{ik}\)</td>
+                <td>\(j\)</td>
+                <td>\(i\) down column \(j\)</td>
+                <td>CSC</td>
+              </tr>
+              <tr>
+                <td>Gradient of \(V\)</td>
+                <td>\(\bar{V} = P^\top\bar{O}\)</td>
+                <td>\(\bar{V}_{jd} = P_{ij}\bar{O}_{id}\)</td>
+                <td>\(j\)</td>
+                <td>\(i\) down column \(j\)</td>
+                <td>CSC</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div><!-- /static2 -->
+
+  </div>
+
+  <script>
+    const N = 6;
+    const ROWS = { 1: [1], 2: [1, 2], 3: [1, 2, 3], 4: [1, 3, 4], 5: [1, 4, 5], 6: [1, 5, 6] };
+    const COLS = {};
+    for (let j = 1; j <= N; j++) { COLS[j] = []; for (let i = 1; i <= N; i++) if (ROWS[i].includes(j)) COLS[j].push(i); }
+    const MAXT = Math.max(...Object.values(ROWS).map(r => r.length));
+    const state = { mode: 'row', i: 4, j: 1, t: 1 };
+    let timer = null;
+
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+    const tex = (s, el, display) => katex.render(s, el, { throwOnError: false, displayMode: !!display });
+    const renderTx = root => root.querySelectorAll('[data-tex]').forEach(e => tex(e.dataset.tex, e, e.dataset.display === '1'));
+    const T = (s, d) => `<span data-tex="${s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"${d ? ' data-display="1"' : ''}></span>`;
+
+    function buildGrid() {
+      const g = $('#grid');
+      const add = (cls, id, html) => { const d = document.createElement('div'); d.className = cls; if (id) d.id = id; if (html !== undefined) d.innerHTML = html; g.appendChild(d); return d; };
+      add('corner');
+      for (let j = 1; j <= N; j++) add('clab', 'cl-' + j, 'j=' + j);
+      add('blank'); add('ohead', null, T('\\bar Q_{ik}'));
+      for (let i = 1; i <= N; i++) {
+        add('rlab', 'rl-' + i, 'i=' + i);
+        for (let j = 1; j <= N; j++) {
+          const on = ROWS[i].includes(j);
+          const c = add('cell' + (on ? ' on' : ''), `c-${i}-${j}`, on ? `${i}${j}` : '·');
+          c.onclick = () => { if (state.mode === 'row') state.i = i; if (state.mode === 'col') state.j = j; stop(); render(); };
+        }
+        add('arr', 'ar-' + i, '→');
+        add('obox q', 'q-' + i, T(`\\bar Q_{${i}}`) + '<b class="badge"></b>');
+      }
+      add('blank');
+      for (let j = 1; j <= N; j++) add('arr', 'ad-' + j, '↓');
+      add('blank'); add('blank');
+      add('ohead', null, T('\\bar K_{jk}'));
+      for (let j = 1; j <= N; j++) add('obox k', 'k-' + j, T(`\\bar K_{${j}}`) + '<b class="badge"></b>');
+      add('blank'); add('blank');
+      renderTx(g);
+    }
+
+    function buildStorage() {
+      const mk = (root, groups, lab, pfx) => {
+        root.innerHTML = Object.keys(groups).map(g =>
+          `<div class="grp" id="${pfx}-${g}"><div class="bx">${groups[g].map((v, n) => `<span id="${pfx}-${g}-${n + 1}">${v}</span>`).join('')}</div><div class="gl">${lab} ${g}</div></div>`
+        ).join('');
+      };
+      mk($('#csr'), ROWS, 'row', 'csr');
+      mk($('#csc'), COLS, 'col', 'csc');
+    }
+
+    function buildCtl() {
+      const c = $('#ctl');
+      const m = state.mode;
+      let h = '';
+      if (m === 'row') { h += 'Thread block for row'; for (let i = 1; i <= N; i++) h += `<button data-i="${i}" class="${i === state.i ? 'active' : ''}">i=${i}</button>`; }
+      if (m === 'col') { h += 'Thread block for column'; for (let j = 1; j <= N; j++) h += `<button data-j="${j}" class="${j === state.j ? 'active' : ''}">j=${j}</button>`; }
+      if (m === 'atomic') { h += `<button data-step="-1">◀</button> step t = ${state.t} / ${MAXT} <button data-step="1">▶</button>`; }
+      h += `<span class="sep"></span><button data-play="1">${timer ? '❚❚ Pause' : '▶ Play'}</button>`;
+      c.innerHTML = h;
+      c.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { state.i = +b.dataset.i; stop(); render(); });
+      c.querySelectorAll('[data-j]').forEach(b => b.onclick = () => { state.j = +b.dataset.j; stop(); render(); });
+      c.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { state.t = ((state.t - 1 + +b.dataset.step + MAXT) % MAXT) + 1; stop(); render(); });
+      c.querySelector('[data-play]').onclick = () => { timer ? stop() : play(); render(); };
+    }
+
+    function advance() {
+      if (state.mode === 'row') state.i = state.i % N + 1;
+      if (state.mode === 'col') state.j = state.j % N + 1;
+      if (state.mode === 'atomic') state.t = state.t % MAXT + 1;
+      render();
+    }
+    function play() { timer = setInterval(advance, 1800); }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    function reset() {
+      $$('#grid .cell').forEach(c => c.classList.remove('sel', 'hit', 'hot', 'dim'));
+      $$('#grid .rlab, #grid .clab, #grid .arr, #grid .obox').forEach(e => e.classList.remove('sel', 'hot', 'dim', 'ok'));
+      $$('#grid .badge').forEach(b => { b.textContent = ''; b.classList.remove('show'); });
+      $$('.grp').forEach(g => g.classList.remove('sel'));
+      $$('.grp .bx span').forEach(s => s.classList.remove('hit'));
+      $('#csr').classList.remove('dim'); $('#csc').classList.remove('dim');
+    }
+
+    function render() {
+      reset();
+      $$('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+      buildCtl();
+      const info = $('#info');
+      const m = state.mode;
+
+      if (m === 'row') {
+        const i = state.i, cols = ROWS[i];
+        for (let r = 1; r <= N; r++) for (let c = 1; c <= N; c++) {
+          const el = $(`#c-${r}-${c}`);
+          if (r !== i) el.classList.add('dim'); else if (cols.includes(c)) el.classList.add('sel');
+        }
+        $('#rl-' + i).classList.add('sel'); $('#ar-' + i).classList.add('sel');
+        for (let r = 1; r <= N; r++) $('#q-' + r).classList.add(r === i ? 'ok' : 'dim');
+        for (let c = 1; c <= N; c++) $('#k-' + c).classList.add('dim');
+        $('#csr-' + i).classList.add('sel'); $('#csc').classList.add('dim');
+        const terms = cols.map(j => `\\bar S_{${i}${j}}\\,K_{${j}k}`).join(' + ');
+        info.innerHTML = `
+      <h3>Gradient of ${T('Q')}: one thread block per row</h3>
+      <div class="eqbox">${T(`\\begin{aligned}\\bar Q_{${i}k} &= \\frac{1}{\\sqrt{D_k}} \\sum_{j\\,:\\,M_{${i}j}=1} \\bar S_{${i}j}\\,K_{jk} \\\\ &= \\frac{1}{\\sqrt{D_k}}\\big(${terms}\\big)\\end{aligned}`, 1)}</div>
+      <p>The free index is ${T('i')}, so the block for ${T('i=' + i)} owns ${T(`\\bar Q_{${i}k}`)}. It reads row ${i} of the CSR list, keys ${T(`j \\in \\{${cols.join(',')}\\}`)}, gathers ${T('K_{jk}')} for those keys and accumulates in registers.</p>
+      <p>No other block writes ${T(`\\bar Q_{${i}k}`)}, so no atomics are needed. The forward output ${T('O_{id} = P_{ij}V_{jd}')} has the same index structure and uses the same loop.</p>`;
+      }
+
+      if (m === 'col') {
+        const j = state.j, rows = COLS[j];
+        for (let r = 1; r <= N; r++) for (let c = 1; c <= N; c++) {
+          const el = $(`#c-${r}-${c}`);
+          if (c !== j) el.classList.add('dim'); else if (rows.includes(r)) el.classList.add('sel');
+        }
+        $('#cl-' + j).classList.add('sel'); $('#ad-' + j).classList.add('sel');
+        for (let c = 1; c <= N; c++) $('#k-' + c).classList.add(c === j ? 'ok' : 'dim');
+        for (let r = 1; r <= N; r++) $('#q-' + r).classList.add('dim');
+        $('#csc-' + j).classList.add('sel'); $('#csr').classList.add('dim');
+        const terms = rows.map(i => `\\bar S_{${i}${j}}\\,Q_{${i}k}`).join(' + ');
+        info.innerHTML = `
+      <h3>Gradient of ${T('K')}: one thread block per column</h3>
+      <div class="eqbox">${T(`\\begin{aligned}\\bar K_{${j}k} &= \\frac{1}{\\sqrt{D_k}} \\sum_{i\\,:\\,M_{i${j}}=1} \\bar S_{i${j}}\\,Q_{ik} \\\\ &= \\frac{1}{\\sqrt{D_k}}\\big(${terms}\\big)\\end{aligned}`, 1)}</div>
+      <p>The free index is ${T('j')}, so the block for ${T('j=' + j)} owns ${T(`\\bar K_{${j}k}`)} (and ${T(`\\bar V_{${j}d}`)}). It reads column ${j} of the CSC list, queries ${T(`i \\in \\{${rows.join(',')}\\}`)}, gathers ${T('Q_{ik}')} and ${T('\\bar O_{id}')} for them and accumulates in registers.</p>
+      <p>Each output row is written once by its owner: no atomics, and the summation order is fixed, so the result is deterministic.</p>`;
+      }
+
+      if (m === 'atomic') {
+        const t = state.t;
+        const writes = [];
+        for (let i = 1; i <= N; i++) if (ROWS[i].length >= t) writes.push([i, ROWS[i][t - 1]]);
+        const cnt = {};
+        writes.forEach(([, j]) => cnt[j] = (cnt[j] || 0) + 1);
+        for (let r = 1; r <= N; r++) for (let c = 1; c <= N; c++) {
+          const el = $(`#c-${r}-${c}`);
+          const w = writes.find(([a, b]) => a === r && b === c);
+          if (w) { el.classList.add('hit'); if (cnt[c] > 1) el.classList.add('hot'); }
+          else el.classList.add('dim');
+        }
+        writes.forEach(([i]) => $('#rl-' + i).classList.add('sel'));
+        for (let r = 1; r <= N; r++) $('#q-' + r).classList.add('dim');
+        for (let c = 1; c <= N; c++) {
+          const box = $('#k-' + c), b = box.querySelector('.badge');
+          if (cnt[c]) { box.classList.add(cnt[c] > 1 ? 'hot' : 'ok'); b.textContent = '×' + cnt[c]; b.classList.add('show'); $('#ad-' + c).classList.add(cnt[c] > 1 ? 'hot' : 'sel'); }
+          else box.classList.add('dim');
+        }
+        writes.forEach(([i]) => $(`#csr-${i}-${t}`).classList.add('hit'));
+        $('#csc').classList.add('dim');
+        const items = writes.map(([i, j]) => {
+          const n = cnt[j];
+          return `<li><span class="tag ${n > 1 ? 'hot' : 'ok'}">×${n}</span>thread ${T('i=' + i)}: ${T(`\\bar K_{${j}k} \\mathrel{+}= \\tfrac{1}{\\sqrt{D_k}}\\,\\bar S_{${i}${j}}\\,Q_{${i}k}`)}</li>`;
+        }).join('');
+        const worst = Object.entries(cnt).filter(([, n]) => n > 1);
+        const conflict = worst.length
+          ? `<p>${worst.map(([j, n]) => `${n} threads add into ${T(`\\bar K_{${j}k}`)} at the same time.`).join(' ')} Plain stores would lose updates; with <code>atomicAdd</code> the writes are serialized.</p>`
+          : `<p>No two threads hit the same column at this step. The kernel cannot know that in advance, so these writes still have to be atomic.</p>`;
+        info.innerHTML = `
+      <h3>Gradient of ${T('K')} with the CSR loop: scatter with atomic adds</h3>
+      <p>Keep one thread per row ${T('i')}, as for ${T('\\bar Q')}. At step ${T('t=' + t)}, every row thread takes its ${t}${['st', 'nd', 'rd'][t - 1] || 'th'} active key ${T('j')} from CSR and adds its term into ${T('\\bar K_{jk}')}:</p>
+      <ul class="writes">${items}</ul>
+      ${conflict}
+      <p class="note">The output index ${T('j')} is not the index the loop is organized by, so several threads can target the same row of ${T('\\bar K')}. Atomic floating-point adds also make the summation order, and hence the rounding, run-dependent. Column 1 (the attention sink) is attended by all six queries, which is the worst case.</p>`;
+      }
+      renderTx(info);
+    }
+
+    window.addEventListener('load', () => {
+      buildGrid();
+      buildStorage();
+      const h = location.hash.slice(1); if (['row', 'atomic', 'col'].includes(h)) state.mode = h;
+      $$('.tabs button').forEach(b => b.onclick = () => { state.mode = b.dataset.mode; stop(); render(); });
+      render();
+      renderMathInElement(document.querySelector('.static2'), { delimiters: [{ left: '\\[', right: '\\]', display: true }, { left: '\\(', right: '\\)', display: false }], throwOnError: false });
+      renderMathInElement(document.querySelector('header'), { delimiters: [{ left: '\\(', right: '\\)', display: false }], throwOnError: false });
+      renderMathInElement(document.querySelector('.legend'), { delimiters: [{ left: '\\(', right: '\\)', display: false }], throwOnError: false });
+      renderMathInElement(document.querySelector('.storage'), { delimiters: [{ left: '\\(', right: '\\)', display: false }], throwOnError: false });
+    });
+  </script>
+</body>
+
+</html>

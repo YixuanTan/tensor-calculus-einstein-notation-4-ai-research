@@ -18,6 +18,12 @@
   body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:var(--text);line-height:1.55;font-size:15px}
   .wrap{max-width:1320px;margin:0 auto;padding:40px 32px 64px}
 
+  /* Top topic navigation */
+  .topnav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .topnav a{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:5px 12px;transition:all .15s}
+  .topnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .topnav a.active{background:var(--panel);color:var(--text);border-color:var(--text);font-weight:600}
+
   /* Header */
   header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
   header h1{font-size:25px;font-weight:700;letter-spacing:-.015em}
@@ -95,6 +101,11 @@
 </head>
 <body>
 <div class="wrap">
+
+<nav class="topnav">
+  <a href="matrix_vs_tensor_flash_attention.html" class="active">01 · FlashAttention</a>
+  <a href="../sparse_attention/sparse_attention_rows_vs_columns.html">02 · Sparse Attention</a>
+</nav>
 
 <header>
   <div>
