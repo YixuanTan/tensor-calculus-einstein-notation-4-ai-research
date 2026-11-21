@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Einstein Notation for AI &amp; LLMs · Interactive Guide</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script>
+  window.KX = {
+    delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],
+    throwOnError:false
+  };
+  function renderAll(el){ if(window.renderMathInElement) renderMathInElement(el||document.body, window.KX); }
+  document.addEventListener('DOMContentLoaded', () => renderAll());
+  window.addEventListener('load', () => renderAll());
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderAll()"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --text:#1f2328; --muted:#59636e; --faint:#8c959f;
+    --line:#e1e6eb; --panel:#f6f8fa; --bg:#fbfbfc;
+    --accent:#0969da;
+    --free:#0969da;  --free-bg:#e8f2ff;
+    --dummy:#d4580a; --dummy-bg:#fff2e6;
+    --spec:#8250df;  --spec-bg:#f3edff;
+    --ok:#1a7f37;    --ok-bg:#e9f9ee;
+    --bad:#cf222e;   --bad-bg:#ffefef;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:16px}
+  .wrap{max-width:1120px;margin:0 auto;padding:36px 32px 80px}
+  code{font-family:'JetBrains Mono',Menlo,monospace;font-size:.86em;background:#eef1f4;padding:1px 6px;border-radius:5px}
+  pre{font-family:'JetBrains Mono',Menlo,monospace;font-size:13px;line-height:1.7;background:#0f1720;color:#d6dde6;border-radius:10px;padding:16px 18px;overflow-x:auto}
+  pre .c{color:#7d8a99} pre .k{color:#ffb86b} pre .g{color:#7ee2a8} pre .r{color:#ff8b8b}
+  .katex-display{margin:.4em 0;overflow-x:auto;overflow-y:hidden;padding:4px 0}
+  .muted{color:var(--muted)}
+
+  /* ---------- Nav ---------- */
+  .topnav{display:flex;gap:8px;margin-bottom:40px;flex-wrap:wrap}
+  .topnav a{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;transition:all .15s}
+  .topnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .topnav a.active{background:var(--text);color:#fff;border-color:var(--text)}
+
+  /* ---------- Hero ---------- */
+  .hero{text-align:center;padding:12px 0 56px}
+  .hero .eyebrow{display:inline-block;font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--free-bg);padding:5px 12px;border-radius:999px;margin-bottom:18px}
+  .hero h1{font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+  .hero .neq{display:inline-flex;align-items:center;gap:14px;margin-top:26px;font-size:22px;font-weight:700}
+  .hero .neq .a{padding:10px 18px;border-radius:12px;background:#fff;border:2px solid var(--text)}
+  .hero .neq .b{padding:10px 18px;border-radius:12px;background:#fff;border:2px dashed var(--faint);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:19px}
+  .hero .neq .sym{font-size:34px;color:var(--bad);font-weight:800}
+  .hero p.sub{max-width:680px;margin:22px auto 0;color:var(--muted);font-size:17px}
+
+  .legend{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:26px}
+  .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:5px 12px;border-radius:999px}
+  .chip i{font-style:normal;font-family:'JetBrains Mono',monospace;font-weight:700}
+  .chip.free{background:var(--free-bg);color:var(--free)}
+  .chip.dummy{background:var(--dummy-bg);color:var(--dummy)}
+  .chip.spec{background:var(--spec-bg);color:var(--spec)}
+  .chip.ok{background:var(--ok-bg);color:var(--ok)}
+  .chip.bad{background:var(--bad-bg);color:var(--bad)}
+
+  /* ---------- Acts ---------- */
+  section.act{margin-top:72px}
+  .act-head{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+  .act-no{flex:none;width:46px;height:46px;border-radius:12px;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px}
+  .act-kicker{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .act-head h2{font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+
+  .key{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:10px;padding:16px 20px;margin-bottom:24px;font-size:18px;font-weight:500;line-height:1.5}
+  .key .tag{flex:none;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--free-bg);border-radius:6px;padding:3px 8px;margin-top:3px}
+  .key b{font-weight:700}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px 26px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+  /* Versus cards */
+  .vs{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px 20px;overflow:hidden}
+  .vs::before{content:'';position:absolute;left:0;top:0;right:0;height:5px}
+  .vs.bad::before{background:var(--bad)} .vs.ok::before{background:var(--ok)}
+  .vs .label{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .vs .formula{font-size:20px;padding:10px 0}
+  .vs .note{font-size:14.5px;color:var(--muted);margin-top:6px}
+  .vs.bad .formula .katex{color:#6e4b4b}
+
+  /* Pillars */
+  .pillar{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 18px;transition:transform .15s, box-shadow .15s}
+  .pillar:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,35,40,.07)}
+  .pillar .ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
+  .pillar h3{font-size:16px;font-weight:700;margin-bottom:4px}
+  .pillar p{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .pillar.p4{border-style:dashed}
+  .pillars-cap{text-align:center;font-size:13.5px;color:var(--faint);margin-top:12px}
+
+  /* Rules */
+  .rule{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 20px 18px}
+  .rule .n{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#fff;background:var(--accent);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
+  .rule h3{font-size:16.5px;font-weight:700;margin-bottom:4px}
+  .rule p{font-size:14px;color:var(--muted)}
+  .rule .formula{font-size:17px;margin-top:8px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
+  .tab{font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);background:var(--panel);border:1px solid transparent;border-radius:999px;padding:7px 15px;cursor:pointer;transition:all .15s}
+  .tab:hover{color:var(--text);border-color:var(--line)}
+  .tab.active{background:var(--text);color:#fff}
+
+  /* Playground */
+  .pg{display:grid;grid-template-columns:1.25fr 1fr;gap:26px;align-items:stretch}
+  .pg-stage{background:var(--panel);border-radius:12px;padding:30px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:230px}
+  .eq{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;font-size:30px}
+  .eq .op{color:var(--faint);font-weight:400;font-size:26px}
+  .term{display:inline-flex;align-items:flex-end}
+  .tname{font-family:'Times New Roman',serif;font-style:italic;font-size:40px;line-height:1}
+  .subs{display:inline-flex;gap:2px;margin-left:2px;margin-bottom:-6px}
+  .ix{display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;min-width:24px;height:26px;padding:0 4px;border-radius:6px;cursor:pointer;user-select:none;transition:all .15s}
+  .ix.free{color:var(--free);background:var(--free-bg)}
+  .ix.dummy{color:var(--dummy);background:var(--dummy-bg)}
+  .ix.spec{color:var(--spec);background:var(--spec-bg)}
+  .ix.lit{transform:scale(1.25);box-shadow:0 0 0 2px currentColor}
+  .ix.dim{opacity:.25}
+  .verify{font-family:'Times New Roman',serif;font-size:18px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+  .verify .lbl{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-right:6px}
+  .verify .vterm{display:inline-flex;align-items:flex-end;line-height:1}
+  .verify .vname{font-style:italic;font-size:19px}
+  .verify .vsum{font-style:normal;font-size:21px;line-height:1}
+  .verify .vsubs{display:inline-flex;gap:2px;margin-left:2px;margin-bottom:-5px}
+  .verify .ix{font-size:11.5px;min-width:15px;height:17px;padding:0 3px;border-radius:4px}
+  .pg-side{display:flex;flex-direction:column;gap:14px}
+  .side-lbl{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+  .axrow{display:flex;align-items:center;gap:10px}
+  .axrow .t{font-family:'Times New Roman',serif;font-style:italic;font-size:22px;width:24px;text-align:right}
+  .axrow .io{font-size:11px;color:var(--faint);width:24px}
+  .axes{display:flex;gap:6px;flex-wrap:wrap}
+  .ax{display:flex;flex-direction:column;align-items:center;min-width:56px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:all .15s;border:1.5px solid transparent}
+  .ax b{font-family:'JetBrains Mono',monospace;font-size:15px}
+  .ax span{font-size:10.5px;opacity:.85}
+  .ax.free{background:var(--free-bg);color:var(--free)}
+  .ax.dummy{background:var(--dummy-bg);color:var(--dummy)}
+  .ax.spec{background:var(--spec-bg);color:var(--spec)}
+  .ax.none{background:var(--panel);color:var(--faint)}
+  .ax.lit{border-color:currentColor;transform:translateY(-2px)}
+  .ax.dim{opacity:.25}
+  .divider{border-top:1px dashed var(--line)}
+  .inspect{margin-top:auto;border-radius:10px;padding:12px 14px;font-size:14px;background:var(--panel);min-height:66px;display:flex;align-items:center}
+  .inspect.free{background:var(--free-bg);color:#0a3d7a}
+  .inspect.dummy{background:var(--dummy-bg);color:#7a3305}
+  .inspect.spec{background:var(--spec-bg);color:#4b2a8a}
+  .mx-note{margin-top:18px;font-size:14px;color:var(--muted);text-align:center}
+
+  /* LHS rule visual */
+  .lhs-demo{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--panel);border-radius:12px;padding:26px 18px}
+  .lhs-demo .formula{font-size:28px}
+  .arrow-note{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .axis-ids{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .aid{border-radius:10px;padding:12px 12px;display:flex;align-items:center;gap:12px}
+  .aid b{font-family:'JetBrains Mono',monospace;font-size:20px;min-width:38px}
+  .aid span{font-size:13px;line-height:1.35}
+  .aid.free{background:var(--free-bg);color:var(--free)}
+  .aid.dummy{background:var(--dummy-bg);color:var(--dummy)}
+  .aid.spec{background:var(--spec-bg);color:var(--spec)}
+  .aid span{color:var(--text)}
+
+  /* Details */
+  details{margin-top:16px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+  details>summary{list-style:none;cursor:pointer;padding:12px 18px;font-size:14px;font-weight:600;color:var(--accent);user-select:none}
+  details>summary::-webkit-details-marker{display:none}
+  details>summary::before{content:'＋';display:inline-block;width:20px}
+  details[open]>summary::before{content:'－'}
+  .dbody{padding:4px 18px 18px}
+  .quiz{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+  .quiz:first-child{border-top:none}
+  .ans{display:none;font-size:14px;color:var(--muted);margin-top:6px}
+  .ans.show{display:block}
+  .btn{font:inherit;font-size:13px;font-weight:600;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--accent);cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--accent)}
+
+  /* Diagonal grid */
+  .diag{display:grid;grid-template-columns:auto 1fr;gap:34px;align-items:center}
+  .mgrid{display:grid;grid-template-columns:30px repeat(4,58px);gap:6px;align-items:center;justify-items:center}
+  .mgrid .h{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--faint)}
+  .mc{width:58px;height:50px;border-radius:9px;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--faint);cursor:pointer;transition:all .15s}
+  .mc small{font-size:9.5px;font-weight:400}
+  .mc.on{background:var(--free);color:#fff}
+  .mc.one{background:var(--ok);color:#fff}
+  .mc.row{background:var(--dummy);color:#fff}
+  .mc.sel{box-shadow:0 0 0 3px var(--text);transform:scale(1.06)}
+  .grid-hint{font-size:13px;color:var(--muted);text-align:center;margin-top:12px;max-width:290px}
+  .dc h3{font-size:20px;font-weight:700;margin-bottom:6px}
+  .dc .big{font-size:24px;margin:8px 0 10px}
+  .dc p{font-size:15px;color:var(--muted);margin-bottom:12px}
+  .insight{display:flex;gap:10px;align-items:flex-start;background:var(--ok-bg);color:#11532a;border-radius:10px;padding:12px 14px;font-size:14.5px;margin-top:12px}
+  .insight .tag{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--ok);color:#fff;border-radius:5px;padding:2px 7px;margin-top:2px}
+
+  /* Associativity */
+  .assoc-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .seg{display:inline-flex;background:var(--panel);border-radius:999px;padding:4px}
+  .seg button{font:inherit;font-size:14px;font-weight:600;border:none;background:transparent;color:var(--muted);padding:8px 16px;border-radius:999px;cursor:pointer;transition:all .15s}
+  .seg button.active.l{background:var(--bad);color:#fff}
+  .seg button.active.r{background:var(--ok);color:#fff}
+  .slider{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+  .slider input{width:170px;accent-color:var(--accent)}
+  .slider b{font-family:'JetBrains Mono',monospace;color:var(--text);min-width:86px}
+  .assoc-eq{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border-radius:12px;padding:28px 16px;font-family:'Times New Roman',serif;font-style:italic;font-size:32px}
+  .assoc-eq sub{font-family:'JetBrains Mono',monospace;font-style:normal;font-size:15px;font-weight:700}
+  .assoc-eq .grp{padding:6px 14px;border-radius:12px;border:2.5px solid transparent;transition:all .25s}
+  .assoc-eq .grp.bad{background:var(--bad-bg);border-color:var(--bad)}
+  .assoc-eq .grp.ok{background:var(--ok-bg);border-color:var(--ok)}
+  .assoc-cap{text-align:center;font-size:14.5px;color:var(--muted);margin:12px 0 22px}
+  .meter{border-radius:12px;padding:18px 20px;border:2px solid var(--line);background:#fff;transition:all .2s}
+  .meter.on.bad{border-color:var(--bad)}
+  .meter.on.ok{border-color:var(--ok)}
+  .meter .num{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;margin:6px 0 2px}
+  .track{height:10px;background:var(--panel);border-radius:999px;overflow:hidden;margin:10px 0 8px}
+  .fill{height:100%;border-radius:999px;transition:width .3s}
+  .fill.bad{background:var(--bad)} .fill.ok{background:var(--ok)}
+  .meter .sm{font-size:13px;color:var(--muted)}
+  .speed{display:inline-block;margin-left:8px;font-size:13px;font-weight:700;background:var(--ok);color:#fff;border-radius:999px;padding:2px 10px;vertical-align:middle}
+
+  /* A/B */
+  .ab .vs pre{margin-top:10px;font-size:12.5px}
+  .ab ul{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+  .ab li::before{margin-right:8px;font-weight:700}
+  .ab .vs.bad li::before{content:'✕';color:var(--bad)}
+  .ab .vs.ok li::before{content:'✓';color:var(--ok)}
+
+  footer{margin-top:80px;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  footer a{color:var(--accent);text-decoration:none;font-weight:600}
+
+  @media (max-width:900px){
+    .grid2,.grid3,.grid4,.pg,.diag,.axis-ids{grid-template-columns:1fr}
+    .hero h1{font-size:34px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="topnav">
+  <a href="einstein_notation_intro.html" class="active">00 · Einstein Notation</a>
+  <a href="matrix_vs_tensor_flash_attention.html">01 · FlashAttention</a>
+  <a href="../sparse_attention/sparse_attention_rows_vs_columns.html">02 · Sparse Attention</a>
+</nav>
+
+<!-- ============================================================ HERO -->
+<div class="hero">
+  <span class="eyebrow">Foundations · AI &amp; LLM Math</span>
+  <h1>Einstein Notation<br>for AI &amp; LLMs</h1>
+  <p class="sub">A clean <b style="color:var(--text)">mathematical writing &amp; derivation system</b> for high-order tensors — no transposes, no \(\mathrm{diag}\), no Hadamard tricks.</p>
+  <div class="legend">
+    <span class="chip free"><i>i</i> Free index · kept</span>
+    <span class="chip dummy"><i>k</i> Dummy index · summed</span>
+    <span class="chip spec"><i>b h</i> Spectator · batch / head</span>
+  </div>
+</div>
+
+<!-- ============================================================ ACT 1 -->
+<section class="act">
+  <div class="act-head">
+    <div class="act-no">01</div>
+    <div><div class="act-kicker">Why it matters</div><h2>Matrix calculus stops scaling at 2D</h2></div>
+  </div>
+
+  <div class="key"><span class="tag">Key idea</span><div>Write <b>one number at a time</b> — \(Q_{\textcolor{#0969da}{i}\textcolor{#d4580a}{k}}\) — and ordinary scalar algebra works for tensors of <b>any</b> rank.</div></div>
+
+  <div class="grid2">
+    <div class="vs bad">
+      <div class="label"><span class="chip bad">Matrix calculus</span></div>
+      <div class="formula">\[ D = \mathrm{rowsum}\big(P \odot (\bar{O}\,V^{\top})\big) \]</div>
+      <div class="note">Transposes, \(\odot\), \(\mathrm{diag}\), \(\mathrm{Tr}\) — and no clean way to write 4D.</div>
+    </div>
+    <div class="vs ok">
+      <div class="label"><span class="chip ok">Einstein notation</span></div>
+      <div class="formula">\[ D_{\textcolor{#0969da}{i}} = P_{\textcolor{#0969da}{i}\textcolor{#d4580a}{m}}\,\bar{O}_{\textcolor{#0969da}{i}\textcolor{#d4580a}{d}}\,V_{\textcolor{#d4580a}{m}\textcolor{#d4580a}{d}} = O_{\textcolor{#0969da}{i}\textcolor{#d4580a}{d}}\,\bar{O}_{\textcolor{#0969da}{i}\textcolor{#d4580a}{d}} \]</div>
+      <div class="note">Just regroup scalars. This one line is the FlashAttention backward trick.</div>
+    </div>
+  </div>
+
+  <div class="grid4" style="margin-top:18px">
+    <div class="pillar">
+      <div class="ico" style="background:var(--free-bg);color:var(--free)">◇</div>
+      <h3>Represent</h3>
+      <p>Every axis gets a name. 4D tensors read as clearly as 2D.</p>
+    </div>
+    <div class="pillar">
+      <div class="ico" style="background:var(--dummy-bg);color:var(--dummy)">⇄</div>
+      <h3>Derive</h3>
+      <p>Regroup sums to discover new algorithms (Linear Attn, MLA).</p>
+    </div>
+    <div class="pillar">
+      <div class="ico" style="background:var(--spec-bg);color:var(--spec)">∂</div>
+      <h3>Differentiate</h3>
+      <p>Chain rule + \(\delta_{ij}\) gives gradients at any rank.</p>
+    </div>
+    <div class="pillar">
+      <div class="ico" style="background:var(--ok-bg);color:var(--ok)">▦</div>
+      <h3>Hardware</h3>
+      <p>Index count reveals HBM vs. SRAM; free indices map to threads.</p>
+    </div>
+  </div>
+
+  <details>
+    <summary>Wait — what about upper/lower indices (covariant / contravariant) from physics?</summary>
+    <div class="dbody" style="font-size:14.5px;color:var(--muted);line-height:1.65">
+      <p style="margin-bottom:8px"><b style="color:var(--text)">You don't need them for 99% of LLM math — and it's not a shortcut.</b></p>
+      <p style="margin-bottom:8px">General relativity works in <b>curved spaces</b> and non-orthogonal coordinates, so it needs upper/lower indices and a metric tensor \(g_{\mu\nu}\) to stay coordinate-invariant.</p>
+      <p>LLM tensor ops (Attention, MLP, MoE, MLA, RoPE) live in <b>flat Euclidean space with an orthonormal basis</b>, where the metric is just the identity \(\delta_{ij}\). Upper and lower indices are numerically identical, so writing everything as subscripts loses zero information.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ ACT 2 -->
+<section class="act">
+  <div class="act-head">
+    <div class="act-no">02</div>
+    <div><div class="act-kicker">The rules</div><h2>Three rules are all you need</h2></div>
+  </div>
+
+  <div class="grid3">
+    <div class="rule">
+      <div class="n">1</div>
+      <h3>Scalar view</h3>
+      <p>A tensor is one indexed number.</p>
+      <div class="formula">\( Q_{\textcolor{#8250df}{b}\textcolor{#8250df}{h}\textcolor{#0969da}{i}\textcolor{#d4580a}{k}} \in \mathbb{R} \)</div>
+    </div>
+    <div class="rule">
+      <div class="n">2</div>
+      <h3>Repeated ⇒ summed</h3>
+      <p>Not on the left-hand side and repeated ⇒ sum over it.</p>
+      <div class="formula">\( C_{\textcolor{#0969da}{i}\textcolor{#0969da}{j}} = A_{\textcolor{#0969da}{i}\textcolor{#d4580a}{k}}B_{\textcolor{#d4580a}{k}\textcolor{#0969da}{j}} \)</div>
+    </div>
+    <div class="rule">
+      <div class="n">3</div>
+      <h3>Order doesn't matter</h3>
+      <p>Factors commute, so transposes disappear.</p>
+      <div class="formula">\( Q_{\textcolor{#0969da}{i}\textcolor{#d4580a}{k}}K_{\textcolor{#0969da}{j}\textcolor{#d4580a}{k}} = K_{\textcolor{#0969da}{j}\textcolor{#d4580a}{k}}Q_{\textcolor{#0969da}{i}\textcolor{#d4580a}{k}} \)</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="tabs" id="pg-tabs">
+      <button class="tab active" data-op="dot">Dot product</button>
+      <button class="tab" data-op="matmul">Matrix multiply</button>
+      <button class="tab" data-op="attn_s">Attention scores</button>
+      <button class="tab" data-op="mha_s">4D multi-head scores</button>
+      <button class="tab" data-op="mha_o">4D attention output</button>
+    </div>
+    <div class="pg">
+      <div class="pg-stage">
+        <div class="eq" id="pg-eq"></div>
+        <div class="verify" id="pg-sum"></div>
+      </div>
+      <div class="pg-side">
+        <div class="side-lbl">Axes · hover or click a letter</div>
+        <div id="pg-axes" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div class="inspect" id="pg-inspect"></div>
+      </div>
+    </div>
+    <div class="mx-note" id="pg-matrix"></div>
+  </div>
+</section>
+
+<!-- ============================================================ ACT 3.1 -->
+<section class="act">
+  <div class="act-head">
+    <div class="act-no">03</div>
+    <div><div class="act-kicker">Conventions</div><h2>Look at the left-hand side</h2></div>
+  </div>
+
+  <div class="key"><span class="tag">Key idea</span><div>If an index is on the <b style="color:var(--free)">left-hand side</b>, it is <b>never summed</b>, even when it repeats on the right.</div></div>
+
+  <div class="grid2">
+    <div class="lhs-demo">
+      <div class="formula">\[ P_{\textcolor{#0969da}{i}\textcolor{#0969da}{j}} = \frac{\exp(S_{\textcolor{#0969da}{i}\textcolor{#0969da}{j}})}{\ell_{\textcolor{#0969da}{i}}} \]</div>
+      <div class="arrow-note">
+        <span class="chip free"><i>i</i> is on the LHS → free</span>
+        <span class="chip bad">not summed</span>
+      </div>
+      <div class="muted" style="font-size:13.5px;text-align:center">No LHS? Mark it with parentheses: \( D_{\textcolor{#0969da}{(i)}}\,dP_{\textcolor{#0969da}{(i)}\textcolor{#0969da}{j}} \)</div>
+    </div>
+    <div>
+      <div class="side-lbl" style="margin-bottom:10px">Give every axis a fixed letter</div>
+      <div class="axis-ids">
+        <div class="aid spec"><b>b h</b><span>Batch, head</span></div>
+        <div class="aid free"><b>i</b><span>Query position</span></div>
+        <div class="aid free"><b>j</b><span>Key / value position</span></div>
+        <div class="aid dummy"><b>k</b><span>Q·K head dim</span></div>
+        <div class="aid free"><b>d</b><span>Value / output dim</span></div>
+        <div class="aid dummy"><b>m n</b><span>Inner sums (never reuse <code>j</code>)</span></div>
+      </div>
+      <details>
+        <summary>Self-check: is it summed?</summary>
+        <div class="dbody">
+          <div class="quiz"><div>\( D_{i} = P_{im}\,dP_{im} \) — which index is summed?<div class="ans" id="qa1"><span class="chip dummy"><i>m</i> summed</span> <span class="chip free"><i>i</i> free (on LHS)</span></div></div><button class="btn" onclick="toggleAns('qa1')">Reveal</button></div>
+          <div class="quiz"><div>\( s = A_{ij}B_{ij} \) — which indices are summed?<div class="ans" id="qa2"><span class="chip dummy"><i>i, j</i> both summed</span> — this is \(\mathrm{Tr}(A^\top B)\).</div></div><button class="btn" onclick="toggleAns('qa2')">Reveal</button></div>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ ACT 3.2 -->
+<section class="act">
+  <div class="act-head">
+    <div class="act-no">3+</div>
+    <div><div class="act-kicker">Advanced</div><h2>Diagonals, trace and \(\delta_{ij}\)</h2></div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" id="diag-tabs">
+      <button class="tab active" data-dtab="trace">Trace</button>
+      <button class="tab" data-dtab="delta">Kronecker delta</button>
+      <button class="tab" data-dtab="tensor3">Diagonal tensor δ<sub>ijk</sub></button>
+    </div>
+    <div class="diag">
+      <div>
+        <div class="mgrid" id="diag-grid"></div>
+        <div class="grid-hint" id="diag-hint"></div>
+      </div>
+      <div class="dc" id="diag-content"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ ACT 4 -->
+<section class="act">
+  <div class="act-head">
+    <div class="act-no">04</div>
+    <div><div class="act-kicker">Payoff</div><h2>Linear attention is one regrouping</h2></div>
+  </div>
+
+  <div class="key"><span class="tag">Key idea</span><div>Same three scalars, different parentheses — <b>regrouping which index you sum first</b> collapses \(O(L^2 D)\) to \(O(L D^2)\).</div></div>
+
+  <div class="card">
+    <div class="assoc-top">
+      <div class="seg">
+        <button id="btn-l" class="l active" onclick="setAssoc('left')">Sum k first</button>
+        <button id="btn-r" class="r" onclick="setAssoc('right')">Sum j first</button>
+      </div>
+      <div class="slider">
+        <span>Sequence length</span>
+        <input type="range" id="seq" min="8" max="15" value="12" oninput="updateAssoc()">
+        <b id="seq-val">L = 4,096</b>
+        <span style="font-size:12.5px">D = 64</span>
+      </div>
+    </div>
+    <div class="assoc-eq" id="assoc-eq"></div>
+    <div class="assoc-cap" id="assoc-cap"></div>
+    <div class="grid2">
+      <div class="meter bad" id="m-l">
+        <span class="chip bad">Sum k first · O(L²D)</span>
+        <div class="num" id="f-l"></div>
+        <div class="track"><div class="fill bad" style="width:100%"></div></div>
+        <div class="sm" id="s-l"></div>
+      </div>
+      <div class="meter ok" id="m-r">
+        <span class="chip ok">Sum j first · O(LD²)</span>
+        <div class="num" id="f-r"></div>
+        <div class="track"><div class="fill ok" id="bar-r"></div></div>
+        <div class="sm" id="s-r"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ ACT 5 -->
+<section class="act ab">
+  <div class="act-head">
+    <div class="act-no">05</div>
+    <div><div class="act-kicker">Bonus · Learning Workflow</div><h2>Agent Skill + Beginner Cheatsheet</h2></div>
+  </div>
+
+  <div class="key"><span class="tag">Prompt</span><div>“Derive multi-head attention forward and backward.”</div></div>
+
+  <div class="grid2">
+    <div class="vs bad">
+      <div class="label"><span class="chip bad">Without skill</span></div>
+<pre>Q' = Q.transpose(1, 2)
+S  = Q' @ K'.transpose(-2, -1) / sqrt(D)
+dS = P * (dP - (dP*P).sum(-1, keepdim=True))
+dK = dS.transpose(-2, -1) @ Q' / sqrt(D)
+<span class="r"># ...transpose(1, 2) back?</span></pre>
+      <ul><li>Axis order lives in your head</li><li>Easy to get transposes wrong</li></ul>
+    </div>
+    <div class="vs ok">
+      <div class="label"><span class="chip ok">With tensor-index-convention</span></div>
+<pre>S_bhij  = Q_bhik K_bhjk / sqrt(D)
+O_bhid  = P_bhij V_bhjd
+D_bhi   = O_bhid dO_bhid
+dS_bhij = P_bhij (dP_bhij - D_bhi)
+dK_bhjk = dS_bhij Q_bhik / sqrt(D)</pre>
+      <ul><li>Every axis named, zero transposes</li><li>Readable scalar algebra at a glance</li></ul>
+    </div>
+  </div>
+
+  <div class="side-lbl" style="margin:26px 0 12px">Your 3-step AI-assisted learning workflow</div>
+  <div class="grid3">
+    <div class="rule">
+      <div class="n">1</div>
+      <h3>Install the Skill</h3>
+      <p>Drop <code>tensor-index-convention</code> into your agent's skills folder once.</p>
+    </div>
+    <div class="rule">
+      <div class="n">2</div>
+      <h3>Let AI derive</h3>
+      <p>Ask AI to derive RoPE, GQA, MLA, or LayerNorm using clean index notation.</p>
+    </div>
+    <div class="rule">
+      <div class="n">3</div>
+      <h3>Read with the Cheatsheet</h3>
+      <p>Keep the 1-page <a href="einstein_notation_cheatsheet.md" style="color:var(--accent);font-weight:600;text-decoration:none">Cheatsheet</a> open side-by-side — after 2–3 papers, you won't need it anymore.</p>
+    </div>
+  </div>
+
+  <details>
+    <summary>Get the Skill &amp; Cheatsheet</summary>
+    <div class="dbody">
+<pre>.agents/skills/tensor-index-convention/
+└── SKILL.md                        <span class="c"># Agent Skill (Claude Code / Cursor / Antigravity)</span>
+einstein_notation_cheatsheet.md     <span class="c"># 1-page Rosetta Stone &amp; Pitfalls cheatsheet</span></pre>
+    </div>
+  </details>
+</section>
+
+<footer>
+  <span>Companion page · Einstein Notation for AI &amp; LLMs</span>
+  <a href="matrix_vs_tensor_flash_attention.html">Next: FlashAttention backward →</a>
+</footer>
+</div>
+
+<script>
+function toggleAns(id){ document.getElementById(id).classList.toggle('show'); }
+
+/* ================= Act 2 · Playground ================= */
+const AX = {
+  b:{name:'Batch',dim:'B'}, h:{name:'Head',dim:'H'}, i:{name:'Query',dim:'L'},
+  j:{name:'Key',dim:'L'}, k:{name:'Head dim',dim:'D'}, d:{name:'Value dim',dim:'Dᵥ'}
+};
+const OPS = {
+  dot:   {lhs:{n:'s',ix:[]},          rhs:[{n:'u',ix:['k']},{n:'v',ix:['k']}],                 r:{k:'dummy'},
+          mx:'Matrix form: <code>s = uᵀv</code>'},
+  matmul:{lhs:{n:'C',ix:['i','j']},   rhs:[{n:'A',ix:['i','k']},{n:'B',ix:['k','j']}],         r:{i:'free',j:'free',k:'dummy'},
+          mx:'Matrix form: <code>C = A B</code>'},
+  attn_s:{lhs:{n:'S',ix:['i','j']},   rhs:[{n:'Q',ix:['i','k']},{n:'K',ix:['j','k']}],         r:{i:'free',j:'free',k:'dummy'},
+          mx:'Matrix form needs a transpose: <code>S = Q Kᵀ</code>. Here, sharing <b style="color:var(--dummy)">k</b> is enough.'},
+  mha_s: {lhs:{n:'S',ix:['b','h','i','j']}, rhs:[{n:'Q',ix:['b','h','i','k']},{n:'K',ix:['b','h','j','k']}], r:{b:'spec',h:'spec',i:'free',j:'free',k:'dummy'},
+          mx:'Same formula as 2D, with <b style="color:var(--spec)">b h</b> added. Matrix form: <code>Q.transpose(1,2) @ K.transpose(1,2).transpose(-2,-1)</code>'},
+  mha_o: {lhs:{n:'O',ix:['b','h','i','d']}, rhs:[{n:'P',ix:['b','h','i','j']},{n:'V',ix:['b','h','j','d']}], r:{b:'spec',h:'spec',i:'free',d:'free',j:'dummy'},
+          mx:'Now <b style="color:var(--dummy)">j</b> is the summed index, not <b style="color:var(--dummy)">k</b>.'}
+};
+const ROLE_TXT = {
+  free:  (c,m)=>`<div><b>${c} · free.</b> It is on the left-hand side, so it stays in the output (size ${m.dim}).</div>`,
+  dummy: (c,m)=>`<div><b>${c} · summed.</b> Repeated on the right only, so it is multiplied and summed over ${m.dim} and disappears.</div>`,
+  spec:  (c,m)=>`<div><b>${c} · spectator.</b> ${m.name} rides along unchanged; every ${m.name.toLowerCase()} is independent.</div>`
+};
+let op='dot', locked=null;
+const ix=(c,r)=>`<span class="ix ${r}" data-i="${c}">${c}</span>`;
+
+function renderPG(key){
+  op=key; locked=null;
+  const o=OPS[key];
+  const term=t=>`<span class="term"><span class="tname">${t.n}</span>${t.ix.length?`<span class="subs">${t.ix.map(c=>ix(c,o.r[c])).join('')}</span>`:''}</span>`;
+  document.getElementById('pg-eq').innerHTML = `${term(o.lhs)}<span class="op">=</span>${o.rhs.map(term).join('<span class="op">·</span>')}`;
+  const dummy = Object.keys(o.r).filter(c => o.r[c]==='dummy');
+  const vterm = t => `<span class="vterm"><span class="vname">${t.n}</span>${t.ix.length?`<span class="vsubs">${t.ix.map(c=>ix(c,o.r[c])).join('')}</span>`:''}</span>`;
+  const sumSym = dummy.length ? `<span class="vterm"><span class="vsum">&Sigma;</span><span class="vsubs">${dummy.map(c=>ix(c,'dummy')).join('')}</span></span>` : '';
+  const rhsPlain = o.rhs.map(vterm).join('<span>&middot;</span>');
+  const lhsPlain = vterm(o.lhs);
+  document.getElementById('pg-sum').innerHTML =
+    `<span class="lbl">meaning</span>${lhsPlain}<span>=</span>${sumSym}${rhsPlain}`;
+  const all=[...o.rhs,o.lhs];
+  document.getElementById('pg-axes').innerHTML = all.map((t,n)=>{
+    const out=n===all.length-1;
+    const boxes=t.ix.length? t.ix.map(c=>`<div class="ax ${o.r[c]}" data-i="${c}"><b>${c}</b><span>${AX[c].name}</span></div>`).join('')
+                           : `<div class="ax none"><b>—</b><span>scalar</span></div>`;
+    return `${out?'<div class="divider"></div>':''}<div class="axrow"><span class="t">${t.n}</span><span class="io">${out?'out':'in'}</span><div class="axes">${boxes}</div></div>`;
+  }).join('');
+  document.getElementById('pg-matrix').innerHTML = o.mx;
+  document.querySelectorAll('#pg-eq [data-i], #pg-sum [data-i], #pg-axes [data-i]').forEach(el=>{
+    const c=el.dataset.i;
+    el.onmouseenter=()=>hi(c);
+    el.onmouseleave=()=>reset();
+    el.onclick=()=>{locked=(locked===c)?null:c; reset();};
+  });
+  reset();
+}
+function hi(c){
+  const r=OPS[op].r[c];
+  document.querySelectorAll('#pg-eq [data-i], #pg-sum [data-i], #pg-axes [data-i]').forEach(el=>{
+    el.classList.toggle('lit', el.dataset.i===c);
+    el.classList.toggle('dim', el.dataset.i!==c);
+  });
+  const box=document.getElementById('pg-inspect');
+  box.className='inspect '+r;
+  box.innerHTML=ROLE_TXT[r](c,AX[c]);
+}
+function reset(){
+  if(locked){hi(locked);return;}
+  document.querySelectorAll('#pg-eq [data-i], #pg-sum [data-i], #pg-axes [data-i]').forEach(el=>el.classList.remove('lit','dim'));
+  const box=document.getElementById('pg-inspect');
+  box.className='inspect';
+  box.innerHTML='<div class="muted">Hover any letter to see what it does.</div>';
+}
+document.querySelectorAll('#pg-tabs .tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#pg-tabs .tab').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); renderPG(b.dataset.op);
+});
+
+/* ================= Act 3.2 · Diagonals ================= */
+let dtab='trace', sel=[2,2];
+const DC = {
+  trace: `<h3>Trace = repeat an index inside one tensor</h3>
+    <div class="big">\\( \\mathrm{Tr}(A) = A_{\\textcolor{#d4580a}{i}\\textcolor{#d4580a}{i}} = \\sum_{i} A_{ii} \\)</div>
+    <p>Repeating the same letter inside a single tensor selects its diagonal: with \\(i\\) on the LHS, \\(v_{\\textcolor{#0969da}{i}} = A_{\\textcolor{#0969da}{i}\\textcolor{#0969da}{i}}\\) is the diagonal vector; with no LHS, \\(A_{\\textcolor{#d4580a}{i}\\textcolor{#d4580a}{i}}\\) sums it.</p>
+    <div class="insight"><span class="tag">Insight</span><div>\\(\\mathrm{Tr}(A^\\top B)\\) is just \\(A_{\\textcolor{#d4580a}{i}\\textcolor{#d4580a}{j}}B_{\\textcolor{#d4580a}{i}\\textcolor{#d4580a}{j}}\\): flatten both matrices and take a dot product.</div></div>`,
+  delta: `<h3>\\(\\delta_{ij}\\) is the identity, used as an index renamer</h3>
+    <div class="big">\\( \\delta_{\\textcolor{#0969da}{i}\\textcolor{#d4580a}{j}}\\,v_{\\textcolor{#d4580a}{j}} = v_{\\textcolor{#0969da}{i}} \\)</div>
+    <p>It is 1 when \\(i=j\\) and 0 otherwise. Multiply by it to rename an index.</p>
+    <p style="margin-bottom:6px;color:var(--text)"><b>Where does \\(\\delta\\) come from in partial derivatives?</b> Because \\(S_{i1}, \\dots, S_{iL}\\) are independent coordinates in row \\(i\\), there are two cases:</p>
+    <ul style="margin:0 0 10px 20px;font-size:14.5px;color:var(--muted);line-height:1.85">
+      <li><b style="color:var(--text)">If \\(j = m\\):</b> \\(S_{im}\\) and \\(S_{ij}\\) are the same variable, so \\(\\dfrac{\\partial S_{im}}{\\partial S_{ij}} = 1\\).</li>
+      <li><b style="color:var(--text)">If \\(j \\neq m\\):</b> \\(S_{im}\\) does not depend on \\(S_{ij}\\), so \\(\\dfrac{\\partial S_{im}}{\\partial S_{ij}} = 0\\).</li>
+    </ul>
+    <p style="margin-bottom:6px">Combining both cases via the Kronecker delta \\(\\delta_{jm} = \\begin{cases} 1, & j = m \\\\ 0, & j \\neq m \\end{cases}\\):</p>
+    <div class="big" style="font-size:20px">\\( \\dfrac{\\partial S_{im}}{\\partial S_{ij}} = \\delta_{jm} \\)</div>
+    <div class="insight"><span class="tag">Backprop</span><div>This is where softmax's \\(P_{ij}(\\delta_{jm} - P_{im})\\) comes from in FlashAttention.</div></div>`,
+  tensor3: `<h3>Elementwise products, written cleanly</h3>
+    <div class="big">\\( Y_{\\textcolor{#0969da}{i}\\textcolor{#0969da}{j}} = a_{\\textcolor{#0969da}{i}}\\,X_{\\textcolor{#0969da}{i}\\textcolor{#0969da}{j}}, \\qquad C_{\\textcolor{#0969da}{i}\\textcolor{#0969da}{j}} = A_{\\textcolor{#0969da}{i}\\textcolor{#0969da}{j}}\\,B_{\\textcolor{#0969da}{i}\\textcolor{#0969da}{j}} \\)</div>
+    <p>Strictly, an index may appear only twice, so textbooks introduce the 3D diagonal tensor \\(\\delta_{ijk}\\) (1 iff \\(i=j=k\\)) and write \\(C_i = \\delta_{ijk}\\,a_j b_k\\). Because <b style="color:var(--free)">i</b> is on the LHS, it is free and the shorter form is unambiguous.</p>
+    <div class="insight"><span class="tag">Takeaway</span><div>No \\(\\mathrm{diag}(a)\\,X\\), no \\(A \\odot B\\), no \\(\\delta_{ijk}\\) needed.</div></div>`
+};
+function renderDiag(){
+  const [si,sj]=sel;
+  let h='<div class="h"></div>'+[1,2,3,4].map(j=>`<div class="h">j=${j}</div>`).join('');
+  for(let i=1;i<=4;i++){
+    h+=`<div class="h">i=${i}</div>`;
+    for(let j=1;j<=4;j++){
+      let cls='', v='', s='';
+      if(dtab==='trace'){ cls=i===j?'on':''; v=`A${i}${j}`; }
+      else if(dtab==='delta'){ cls=i===j?'one':''; v=i===j?'1':'0'; s=`δ${i}${j}`; }
+      else { cls=i===si?'row':''; v=`a${i}·X`; s=`row ${i}`; }
+      h+=`<div class="mc ${cls} ${si===i&&sj===j?'sel':''}" onclick="sel=[${i},${j}];renderDiag()"><span>${v}</span>${s?`<small>${s}</small>`:''}</div>`;
+    }
+  }
+  document.getElementById('diag-grid').innerHTML=h;
+  const hint = dtab==='trace' ? (si===sj?`A${si}${sj} is on the diagonal, so it counts toward the trace.`:`A${si}${sj} is off the diagonal, so the trace ignores it.`)
+             : dtab==='delta' ? `δ${si}${sj} = ${si===sj?1:0}`
+             : `Row ${si}: every entry is multiplied by the same a${si}.`;
+  document.getElementById('diag-hint').textContent=hint;
+  const dc=document.getElementById('diag-content');
+  if(dc.dataset.tab!==dtab){ dc.innerHTML=DC[dtab]; dc.dataset.tab=dtab; renderAll(dc); }
+}
+document.querySelectorAll('#diag-tabs .tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#diag-tabs .tab').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); dtab=b.dataset.dtab; renderDiag();
+});
+
+/* ================= Act 4 · Associativity ================= */
+let mode='left';
+const fmt=n=>n>=1e9?(n/1e9).toFixed(1)+' B':n>=1e6?(n/1e6).toFixed(1)+' M':n>=1e3?(n/1e3).toFixed(1)+' K':String(n);
+function setAssoc(m){ mode=m;
+  document.getElementById('btn-l').classList.toggle('active',m==='left');
+  document.getElementById('btn-r').classList.toggle('active',m==='right');
+  updateAssoc();
+}
+function updateAssoc(){
+  const L=2**(+document.getElementById('seq').value), D=64;
+  document.getElementById('seq-val').textContent='L = '+L.toLocaleString();
+  const lo=2*L*L*D, ro=2*L*D*D, sp=Math.round(lo/ro);
+  document.getElementById('f-l').textContent=fmt(lo)+' MACs';
+  document.getElementById('f-r').innerHTML=fmt(ro)+' MACs<span class="speed">'+sp+'× fewer</span>';
+  document.getElementById('s-l').innerHTML=`Intermediate S<sub>ij</sub> is ${L.toLocaleString()} × ${L.toLocaleString()}`;
+  document.getElementById('s-r').innerHTML=`Intermediate M<sub>kd</sub> is ${D} × ${D}`;
+  document.getElementById('bar-r').style.width=Math.max(1.5,ro/lo*100)+'%';
+  document.getElementById('m-l').classList.toggle('on',mode==='left');
+  document.getElementById('m-r').classList.toggle('on',mode==='right');
+  const eq=document.getElementById('assoc-eq'), cap=document.getElementById('assoc-cap');
+  if(mode==='left'){
+    eq.innerHTML=`<span>O<sub style="color:var(--free)">id</sub></span><span>=</span><span class="grp bad">Q<sub>i<span style="color:var(--dummy)">k</span></sub> K<sub>j<span style="color:var(--dummy)">k</span></sub></span><span>V<sub>jd</sub></span>`;
+    cap.innerHTML=`Summing <b style="color:var(--dummy)">k</b> first builds an <b>L × L</b> matrix.`;
+  } else {
+    eq.innerHTML=`<span>O<sub style="color:var(--free)">id</sub></span><span>=</span><span>Q<sub>ik</sub></span><span class="grp ok">K<sub><span style="color:var(--dummy)">j</span>k</sub> V<sub><span style="color:var(--dummy)">j</span>d</sub></span>`;
+    cap.innerHTML=`Summing <b style="color:var(--dummy)">j</b> first builds only a <b>D × D</b> matrix. Same scalars, different grouping.`;
+  }
+}
+
+renderPG('dot');
+renderDiag();
+updateAssoc();
+</script>
+</body>
+</html>
