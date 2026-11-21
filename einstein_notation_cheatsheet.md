@@ -81,8 +81,12 @@ The real payoff of Einstein notation is **algebraic manipulation on paper** — 
 - **Definition:** $\delta_{ij} = 1$ if $i = j$, else $0$ (the identity matrix in index form).
 - **Index renamer:** Multiplying by $\delta_{ij}$ replaces the summed index:
   $$\delta_{ij}\, v_j = v_i$$
-- **Partial derivatives of independent coordinates:** Same coordinate $\implies 1$, different coordinate $\implies 0$:
-  $$\frac{\partial x_i}{\partial x_j} = \delta_{ij}, \qquad \frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm}, \qquad \frac{\partial A_{pq}}{\partial A_{ij}} = \delta_{pi}\delta_{qj}$$
+- **Where $\delta$ comes from in partial derivatives:** Because $S_{i1}, \dots, S_{iL}$ are independent coordinates in row $i$, there are two cases:
+  - **If $j = m$:** $S_{im}$ and $S_{ij}$ are the same variable, so $\dfrac{\partial S_{im}}{\partial S_{ij}} = 1$.
+  - **If $j \neq m$:** $S_{im}$ does not depend on $S_{ij}$, so $\dfrac{\partial S_{im}}{\partial S_{ij}} = 0$.
+
+  Combining both cases via the Kronecker delta $\delta_{jm} = \begin{cases} 1, & j = m \\ 0, & j \neq m \end{cases}$:
+  $$\frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm} \qquad \Big(\text{and in general: } \frac{\partial x_i}{\partial x_j} = \delta_{ij}, \quad \frac{\partial A_{pq}}{\partial A_{ij}} = \delta_{pi}\delta_{qj}\Big)$$
 - **1-line matrix differentiation (differentiate $\to \delta \to$ rename index):**
   $$\frac{\partial (W_{ik} x_k)}{\partial x_j} = W_{ik} \frac{\partial x_k}{\partial x_j} = W_{ik} \delta_{kj} = W_{ij}$$
 - **Softmax Jacobian (no matrix tricks):**
