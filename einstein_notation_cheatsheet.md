@@ -91,7 +91,6 @@ The real payoff of Einstein notation is **algebraic manipulation on paper** — 
   $$\frac{\partial (W_{ik} x_k)}{\partial x_j} = W_{ik} \frac{\partial x_k}{\partial x_j} = W_{ik} \delta_{kj} = W_{ij}$$
 - **Softmax Jacobian (no matrix tricks):**
   $$\frac{\partial P_{ij}}{\partial S_{im}} = P_{ij}(\delta_{jm} - P_{im})$$
-- **3D Diagonal Tensor $\delta_{ijk}$:** Textbooks enforce strict "at most 2 occurrences per index" using $\delta_{ijk}$ ($1$ iff $i=j=k$), writing $C_i = \delta_{ijk} a_j b_k$. In LLM derivations, the **LHS free-index rule** ($C_i = a_i b_i$ or $Y_{ij} = a_i X_{ij}$) gives the exact same meaning without extra clutter.
 
 ---
 
