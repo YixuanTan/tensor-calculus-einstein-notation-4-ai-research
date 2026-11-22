@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goodbye Transpose Hell: Einstein Notation for AI &amp; LLMs</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script>
+  window.KX = {
+    delimiters: [
+      { left: '\\[', right: '\\]', display: true },
+      { left: '\\(', right: '\\)', display: false }
+    ],
+    throwOnError: false
+  };
+  function renderAll() {
+    if (window.renderMathInElement) renderMathInElement(document.body, window.KX);
+  }
+  document.addEventListener('DOMContentLoaded', renderAll);
+  window.addEventListener('load', renderAll);
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderAll()"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f6f8fa;
+    --text: #1f2328;
+    --muted: #59636e;
+    --faint: #8c959f;
+    --line: #e5e9ef;
+    --accent: #0969da;
+    --accent-bg: #eef6ff;
+    --dummy: #d4580a;
+    --dummy-bg: #fff3e8;
+    --ok: #1a7f37;
+    --ok-bg: #eaf8ee;
+    --bad: #cf222e;
+    --bad-bg: #ffebe9;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16.5px;
+    line-height: 1.78;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Top Navigation ---------- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  .navlinks {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .navlinks a {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .navlinks a:hover {
+    color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .navlinks a.active {
+    background: var(--text);
+    color: #fff;
+  }
+
+  /* ---------- Layout ---------- */
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    display: grid;
+    grid-template-columns: minmax(0, 760px) 220px;
+    gap: 56px;
+    align-items: start;
+  }
+
+  /* ---------- Sidebar TOC ---------- */
+  .toc {
+    position: sticky;
+    top: 84px;
+    font-size: 13px;
+    border-left: 1.5px solid var(--line);
+    padding-left: 16px;
+  }
+  .toc-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--faint);
+    margin-bottom: 10px;
+  }
+  .toc a {
+    display: block;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 4px 0;
+    line-height: 1.45;
+    transition: color 0.15s;
+  }
+  .toc a:hover { color: var(--accent); }
+  .toc a.sub {
+    padding-left: 12px;
+    font-size: 12.5px;
+    color: var(--faint);
+  }
+  .toc a.sub:hover { color: var(--accent); }
+
+  /* ---------- Article Header ---------- */
+  .eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 4px 11px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.18;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+  .meta a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .meta a:hover { text-decoration: underline; }
+  .dot { color: var(--faint); }
+
+  /* ---------- Prose & Headings ---------- */
+  h2 {
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    margin: 52px 0 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 76px;
+  }
+  h3 {
+    font-size: 18.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 30px 0 10px;
+    scroll-margin-top: 76px;
+  }
+  h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 22px 0 8px;
+    color: var(--text);
+  }
+  p { margin-bottom: 16px; }
+  ul, ol {
+    margin: 0 0 18px 22px;
+  }
+  li { margin-bottom: 8px; }
+  li strong { color: var(--text); }
+
+  a { color: var(--accent); }
+  code {
+    font-family: 'JetBrains Mono', Menlo, monospace;
+    font-size: 0.85em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 5px;
+    color: var(--text);
+  }
+
+  /* ---------- Callouts ---------- */
+  .callout {
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin: 22px 0;
+    font-size: 15.5px;
+    line-height: 1.68;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.tldr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+  }
+  .callout.insight {
+    background: var(--ok-bg);
+    border: 1px solid #c6ebd0;
+    color: #114b24;
+  }
+  .callout.warn {
+    background: var(--dummy-bg);
+    border: 1px solid #f7d5b6;
+    color: #6b2e07;
+  }
+  .callout-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .callout.tldr .callout-label { color: var(--accent); }
+  .callout.insight .callout-label { color: var(--ok); }
+  .callout.warn .callout-label { color: var(--dummy); }
+
+  /* ---------- Math Display ---------- */
+  .eq-box {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    margin: 18px 0;
+    overflow-x: auto;
+  }
+  .katex-display {
+    margin: 0.45em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 0;
+  }
+
+  /* ---------- Table ---------- */
+  .table-wrap {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    margin: 22px 0 26px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  thead th {
+    background: var(--surface);
+    text-align: left;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--text);
+    padding: 12px 14px;
+    border-bottom: 1.5px solid var(--line);
+    white-space: nowrap;
+  }
+  thead th.ein-col {
+    background: var(--accent-bg);
+    color: #0550ae;
+  }
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #edf0f4;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) td { background: #fbfcfd; }
+  tbody td.ein-col {
+    background: #f5faff;
+    color: #0550ae;
+  }
+  tbody tr:nth-child(even) td.ein-col { background: #edf5ff; }
+  .badge-bad {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--bad);
+    background: var(--bad-bg);
+    padding: 2px 9px;
+    border-radius: 999px;
+  }
+
+  /* ---------- Step Cards ---------- */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 20px 0 26px;
+  }
+  .step {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+    background: #fff;
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .step h4 { margin: 0 0 6px; font-size: 15.5px; }
+  .step p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.55; }
+
+  /* ---------- Resource Links ---------- */
+  .resources {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .res-card {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-decoration: none;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .res-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(9, 105, 218, 0.08);
+  }
+  .res-card strong {
+    display: block;
+    font-size: 14.5px;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+  .res-card span {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.45;
+    display: block;
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-size: 13.5px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  footer a { text-decoration: none; font-weight: 600; }
+
+  @media (max-width: 960px) {
+    .page { grid-template-columns: 1fr; padding-top: 32px; }
+    .toc { display: none; }
+    h1 { font-size: 30px; }
+    .steps, .resources { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research">Tensor Calculus for AI</a>
+    <nav class="navlinks">
+      <a href="einstein_notation_for_ai.html" class="active">Blog · Foundations</a>
+      <a href="../flash_attention/einstein_notation_intro.html">Interactive Slides</a>
+      <a href="../flash_attention/matrix_vs_tensor_flash_attention.html">01 · FlashAttention</a>
+      <a href="../sparse_attention/sparse_attention_rows_vs_columns.html">02 · Sparse Attention</a>
+      <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <article>
+    <span class="eyebrow">Foundations · AI &amp; LLM Math</span>
+    <h1>Goodbye Transpose Hell: A 10-Minute Guide to Einstein Notation for AI &amp; LLMs</h1>
+
+    <div class="meta">
+      <span>~8 min read</span>
+      <span class="dot">·</span>
+      <a href="../flash_attention/einstein_notation_intro.html">Interactive Slides</a>
+      <span class="dot">·</span>
+      <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/einstein_notation_cheatsheet.md">1-Page Cheatsheet</a>
+      <span class="dot">·</span>
+      <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/tensor-index-convention/SKILL.md">Agent Skill</a>
+    </div>
+
+    <div class="callout tldr">
+      <div class="callout-label">TL;DR</div>
+      <p>You don't need covariant/contravariant indices from general relativity to use Einstein notation in deep learning. With <strong>3 minimal rules</strong> and the <strong>Kronecker delta (\(\delta_{ij}\))</strong>, transposes, \(\mathrm{diag}\), \(\odot\), and matrix-calculus tricks vanish — scaling seamlessly from 2D linear layers to 4D multi-head attention, Linear Attention, and FlashAttention backpropagation.</p>
+    </div>
+
+    <h2 id="physics">Wait — Do I Need Upper/Lower Indices from Physics?</h2>
+    <p>When people hear <em>"Einstein notation"</em>, they often worry about covariant vs. contravariant indices, curved manifolds, and metric tensors \(g_{\mu\nu}\) from general relativity.</p>
+    <p><strong>You don't need any of that for 99% of LLM math — and it isn't a shortcut:</strong></p>
+    <ul>
+      <li>General relativity operates in <strong>curved spaces</strong> and non-orthogonal coordinate systems, so it must distinguish upper and lower indices to preserve coordinate invariance.</li>
+      <li>Modern deep learning operations (Attention, MLP, MoE, MLA, RoPE) live in <strong>flat Euclidean space with an orthonormal basis</strong>, where the metric tensor is simply the identity \(\delta_{ij}\). Upper and lower indices are numerically identical.</li>
+    </ul>
+    <p>Writing everything as <strong>subscripts loses zero information</strong>. With the three rules below, ordinary scalar algebra replaces whole-matrix transposes and ad-hoc matrix-calculus identities.</p>
+
+    <h2 id="rules">1. Three Minimal Rules: From 1D to 4D</h2>
+
+    <h3 id="rule-1">Rule 1: View Every Tensor as a Single Indexed Scalar</h3>
+    <p>Traditional matrix calculus treats matrices as opaque 2D blocks, which breaks down the moment you hit 3D or 4D tensors. Einstein notation flips the perspective — <strong>focus on one real number at specific coordinates</strong>:</p>
+    <ul>
+      <li>Entry \(k\) of a vector \(u \;\to\; u_k \in \mathbb{R}\)</li>
+      <li>Row \(i\), column \(k\) of a matrix \(A \;\to\; A_{ik} \in \mathbb{R}\)</li>
+      <li>Element \((b, h, i, k)\) of a 4D query tensor \(Q \;\to\; Q_{bhik} \in \mathbb{R}\)</li>
+    </ul>
+    <p>Because every symbol is just an ordinary real number, <strong>commutativity and associativity from elementary algebra immediately come back to life</strong>.</p>
+
+    <h3 id="rule-2">Rule 2: Free Indices vs. Dummy Indices</h3>
+    <p>Start from two familiar operations:</p>
+    <div class="eq-box">
+      \[ s = \sum_{k=1}^{D} u_k v_k \quad \xrightarrow{\text{drop }\sum} \quad s = u_k v_k \]
+      \[ C_{ij} = \sum_{k=1}^{D} A_{ik} B_{kj} \quad \xrightarrow{\text{drop }\sum} \quad C_{ij} = A_{ik} B_{kj} \]
+    </div>
+    <p>The rule is one sentence:</p>
+    <ul>
+      <li><strong style="color:var(--accent)">Free index</strong> (e.g., \(i, j\)): appears on the <strong>left-hand side (LHS)</strong> \(\implies\) defines the output tensor shape, <strong>never summed</strong>.</li>
+      <li><strong style="color:var(--dummy)">Dummy / contracted index</strong> (e.g., \(k\)): <strong>absent from the LHS, repeated on the RHS</strong> \(\implies\) <strong>automatically summed</strong> (contracted) over its dimension.</li>
+    </ul>
+
+    <h3 id="rule-3">Rule 3: Commutativity &amp; Effortless 4D Scaling (Transposes Vanish)</h3>
+    <p>Because components are plain scalars, factors commute freely — <strong>transposes disappear completely</strong>. Compare attention scores \(S = Q K^\top\):</p>
+    <ul>
+      <li>In matrix notation, you must transpose \(K\) into \(K^\top\) just to make inner dimensions touch.</li>
+      <li>In index notation, whichever two axes you want to contract simply share the same letter \(k\):
+        \[ S_{ij} = Q_{ik} K_{jk} = K_{jk} Q_{ik} \]
+      </li>
+    </ul>
+    <p>Better yet, scaling from 2D to 4D Multi-Head Attention requires <strong>zero new machinery</strong>. Batch (\(b\)) and head (\(h\)) are just two more <strong>free indices</strong> carried unchanged on both sides:</p>
+    <div class="eq-box">
+      \[ S_{bhij} = Q_{bhik} K_{bhjk}, \qquad O_{bhid} = P_{bhij} V_{bhjd} \]
+    </div>
+    <p>No <code>.transpose(1, 2)</code>, no <code>.transpose(-2, -1)</code>, and no prose disclaimers like <em>"applied independently per batch and head."</em></p>
+
+    <h3 id="rosetta">Rosetta Stone: Matrix Calculus ↔ Einstein Notation</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>Matrix Calculus</th>
+            <th class="ein-col">Einstein Notation</th>
+            <th>Explicit Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Dot product</strong></td>
+            <td>\(s = u^\top v\)</td>
+            <td class="ein-col">\(s = u_k v_k\)</td>
+            <td>\(\sum_k u_k v_k\)</td>
+          </tr>
+          <tr>
+            <td><strong>Matrix multiply</strong></td>
+            <td>\(C = AB\)</td>
+            <td class="ein-col">\(C_{ij} = A_{ik} B_{kj}\)</td>
+            <td>\(\sum_k A_{ik} B_{kj}\)</td>
+          </tr>
+          <tr>
+            <td><strong>Attention scores (2D)</strong></td>
+            <td>\(S = QK^\top\)</td>
+            <td class="ein-col">\(S_{ij} = Q_{ik} K_{jk}\)</td>
+            <td>\(\sum_k Q_{ik} K_{jk}\) (no transpose!)</td>
+          </tr>
+          <tr>
+            <td><strong>4D Multi-Head scores</strong></td>
+            <td><span class="badge-bad">2D breaks</span></td>
+            <td class="ein-col">\(S_{bhij} = Q_{bhik} K_{bhjk}\)</td>
+            <td>\(\sum_k Q_{bhik} K_{bhjk}\)</td>
+          </tr>
+          <tr>
+            <td><strong>Row scaling</strong></td>
+            <td>\(Y = \mathrm{diag}(a)X\)</td>
+            <td class="ein-col">\(Y_{ij} = a_i X_{ij}\)</td>
+            <td>\(i\) on LHS \(\implies\) not summed</td>
+          </tr>
+          <tr>
+            <td><strong>Elementwise (Hadamard)</strong></td>
+            <td>\(C = A \odot B\)</td>
+            <td class="ein-col">\(C_{ij} = A_{ij} B_{ij}\)</td>
+            <td>\(i, j\) on LHS \(\implies\) not summed</td>
+          </tr>
+          <tr>
+            <td><strong>Trace</strong></td>
+            <td>\(t = \mathrm{Tr}(A)\)</td>
+            <td class="ein-col">\(t = A_{ii}\)</td>
+            <td>\(\sum_i A_{ii}\)</td>
+          </tr>
+          <tr>
+            <td><strong>Frobenius inner product</strong></td>
+            <td>\(s = \mathrm{Tr}(A^\top B)\)</td>
+            <td class="ein-col">\(s = A_{ij} B_{ij}\)</td>
+            <td>\(\sum_{i,j} A_{ij} B_{ij}\)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="habits">2. Two Habits That Prevent 90% of Derivation Bugs</h2>
+
+    <h3>Habit 1: Fix Every Axis Letter Upfront</h3>
+    <p>Assign a permanent letter to each dimension so indices never collide across multi-step derivations:</p>
+    <ul>
+      <li>\(b, h\): Batch, Query Head (free indices); in GQA/MQA, use \(g\) for KV Head Group</li>
+      <li>\(i\): Query sequence position (free output axis)</li>
+      <li>\(j\): Key / Value sequence position</li>
+      <li>\(m, n\): Inner normalization sums (e.g., Softmax denominator) — <strong>never reuse \(j\)</strong></li>
+      <li>\(k\): Query–Key head dimension (\(D_k\)); \(d\): Value / output feature dimension (\(D_v\))</li>
+      <li><strong>Adjoint sensitivity (\(\bar{X}\))</strong>: Reserve the overbar exclusively for the gradient of a scalar loss \(\mathcal{L}\) with respect to any tensor, \(\bar{X} \equiv \partial \mathcal{L} / \partial X\). By construction, \(\bar{X}\) always has the <strong>exact same index shape</strong> as \(X\) (e.g., \(\bar{O}_{id}, \bar{P}_{ij}, \bar{Q}_{ik}\)).</li>
+    </ul>
+
+    <h3>Habit 2: Repeated Index on the RHS? Always Check the LHS First!</h3>
+    <p>Consider Softmax normalization:</p>
+    \[ P_{ij} = \frac{\exp(S_{ij})}{\ell_i} \]
+    <p>The index \(i\) appears twice on the RHS — do we sum over \(i\)? <strong>No.</strong> Follow <strong>LHS Free Index Invariance</strong>:</p>
+    <ul>
+      <li><strong>With an LHS:</strong> Any index present on the LHS (\(i\) in \(P_{ij}\), or \(i\) in \(D_i = P_{im}\bar{P}_{im}\)) is locked as a <strong>free index</strong> and is <strong>never summed</strong> (no redundant parentheses needed). In \(D_i = P_{im}\bar{P}_{im}\), \(i\) is free and \(m\) is summed.</li>
+      <li><strong>Without an LHS</strong> (a standalone expression): wrap non-summed repeated indices in parentheses, e.g. \(D_{(i)}\bar{P}_{(i)j}\).</li>
+    </ul>
+
+    <h2 id="delta">3. The Real Superpower: Kronecker Delta (\(\delta_{ij}\)) &amp; Effortless Backprop</h2>
+    <p>If Sections 1–2 make forward equations clean, the <strong>Kronecker delta (\(\delta_{ij}\))</strong> is what turns backward differentiation from matrix-calculus gymnastics into mechanical algebra.</p>
+
+    <h3 id="delta-def">3.1 Definition &amp; Core Intuition: The "Index Renamer"</h3>
+    <p>The Kronecker delta is simply the identity matrix in index form:</p>
+    \[ \delta_{ij} = \begin{cases} 1, & i = j \\ 0, & i \neq j \end{cases} \]
+    <p>When multiplied by any tensor and contracted over a repeated index, <strong>\(\delta\) simply renames that index</strong>:</p>
+    <div class="eq-box">
+      \[ \delta_{ij}\, v_j = v_i, \qquad \delta_{jm}\, A_{im} = A_{ij} \]
+    </div>
+
+    <h3 id="delta-deriv">3.2 Where Does \(\delta\) Come From in Partial Derivatives?</h3>
+    <p>Many readers wonder why \(\delta\) suddenly appears in Softmax or Attention backprop. It comes directly from differentiating independent coordinates.</p>
+    <p>Because \(S_{i1}, \dots, S_{iL}\) are independent coordinates in row \(i\), there are two cases for \(\frac{\partial S_{im}}{\partial S_{ij}}\):</p>
+    <ul>
+      <li><strong>If \(j = m\):</strong> \(S_{im}\) and \(S_{ij}\) are the same variable, so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 1\).</li>
+      <li><strong>If \(j \neq m\):</strong> \(S_{im}\) does not depend on \(S_{ij}\), so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 0\).</li>
+    </ul>
+    <p>Combining both cases via the Kronecker delta \(\delta_{jm} = \begin{cases} 1, & j = m \\ 0, & j \neq m \end{cases}\) gives:</p>
+    <div class="eq-box">
+      \[ \frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm} \]
+    </div>
+    <p>This generalizes immediately to tensors of any rank — the partial derivative is \(1\) iff <strong>every</strong> index matches, and \(0\) otherwise:</p>
+    \[ \frac{\partial x_i}{\partial x_j} = \delta_{ij}, \qquad \frac{\partial A_{pq}}{\partial A_{ij}} = \delta_{pi}\delta_{qj} \]
+
+    <h3 id="delta-combo">3.3 The Two-Step Combo: Differentiate \(\to \delta \to\) Rename Index</h3>
+    <p>Combine Sections 3.1 and 3.2, and the most common deep-learning derivatives fall out mechanically without ever consulting a matrix-calculus lookup table.</p>
+
+    <h4>Example A: Linear Layer Backprop (Never Guess \(W\) vs. \(W^\top\) Again)</h4>
+    <p>For a linear projection \(Y_{id} = X_{ik} W_{kd}\):</p>
+    <ol>
+      <li>Vector case \(y_i = W_{ik} x_k\) with respect to \(x_j\):
+        \[ \frac{\partial (W_{ik} x_k)}{\partial x_j} = W_{ik} \frac{\partial x_k}{\partial x_j} = W_{ik} \delta_{kj} = W_{ij} \]
+      </li>
+      <li>Full matrix layer adjoint \(\bar{X}_{pq} \equiv \partial \mathcal{L} / \partial X_{pq}\) via the scalar chain rule:
+        \[ \bar{X}_{pq} = \bar{Y}_{id} \frac{\partial Y_{id}}{\partial X_{pq}} = \bar{Y}_{id} \frac{\partial X_{ik}}{\partial X_{pq}} W_{kd} = \bar{Y}_{id} (\delta_{ip}\delta_{kq}) W_{kd} = \bar{Y}_{pd} W_{qd} \]
+        Renaming the free indices \((p, q) \to (i, k)\) yields \(\bar{X}_{ik} = \bar{Y}_{id} W_{kd}\). Zero guessing about left- vs. right-multiplication or transposes — \(\delta\) aligns every axis automatically.
+      </li>
+    </ol>
+
+    <h4>Example B: Softmax Jacobian &amp; Attention Backward Pass</h4>
+    <p>For \(P_{im} = \exp(S_{im}) / \ell_i\) (where \(\ell_i = \sum_n \exp(S_{in})\)), apply the ordinary quotient rule with respect to \(S_{ij}\):</p>
+    <ul>
+      <li>Numerator derivative: \(\dfrac{\partial \exp(S_{im})}{\partial S_{ij}} = \exp(S_{im})\dfrac{\partial S_{im}}{\partial S_{ij}} = \exp(S_{im})\delta_{jm}\)</li>
+      <li>Denominator derivative: \(\dfrac{\partial \ell_i}{\partial S_{ij}} = \sum_n \exp(S_{in})\delta_{jn} = \exp(S_{ij})\)</li>
+    </ul>
+    <p>Plug directly into the quotient rule:</p>
+    <div class="eq-box">
+      \[ \frac{\partial P_{im}}{\partial S_{ij}} = \frac{\exp(S_{im})\delta_{jm} \cdot \ell_i - \exp(S_{im})\exp(S_{ij})}{\ell_i^2} = P_{im}(\delta_{jm} - P_{ij}) \]
+    </div>
+    <p>Apply the chain rule to obtain \(\bar{S}_{ij}\) — \(\delta_{jm}\) immediately renames \(m \to j\):</p>
+    <div class="eq-box">
+      \[ \bar{S}_{ij} = \bar{P}_{im}\frac{\partial P_{im}}{\partial S_{ij}} = \bar{P}_{im} P_{im}\delta_{jm} - P_{ij}(\bar{P}_{im} P_{im}) = P_{ij}\big(\bar{P}_{ij} - D_i\big), \qquad D_i = P_{im}\bar{P}_{im} \]
+    </div>
+
+    <div class="callout insight">
+      <div class="callout-label">Why This Matters</div>
+      <p>The exact same two-step pattern solves <strong>RMSNorm, LayerNorm, Cross-Entropy, and SwiGLU</strong> — no high-order matrix Jacobians required. Repeating an index inside a single tensor also handles trace effortlessly (\(\mathrm{Tr}(A) = A_{ii}\), \(\mathrm{Tr}(A^\top B) = A_{ij}B_{ij}\)).</p>
+    </div>
+
+    <h2 id="payoff">4. Payoff: Linear Attention &amp; FlashAttention in One Line</h2>
+    <p>The real payoff of Einstein notation isn't just cleaner notation — it's <strong>algebraic discovery on paper</strong>.</p>
+
+    <h3>Linear Attention (\(O(L^2 D) \to O(L D^2)\))</h3>
+    <p>Drop Softmax (replacing \(Q, K\) with feature-mapped \(\phi(Q), \phi(K)\)). The unnormalized output is simply a product of three scalars:</p>
+    <div class="eq-box">
+      \[ O_{id} = \underbrace{\big(Q_{ik} K_{jk}\big)}_{S_{ij}:\; O(L^2 D)} V_{jd} = Q_{ik} \underbrace{\big(K_{jk} V_{jd}\big)}_{M_{kd}:\; O(L D^2)} \]
+    </div>
+    <p>Moving the parentheses from <strong>summing \(k\) first</strong> (building an \(L \times L\) attention matrix) to <strong>summing \(j\) first</strong> (building a tiny \(D \times D\) state matrix) reveals the entire speedup at a glance.</p>
+
+    <h3>FlashAttention's Core Backward Identity</h3>
+    <p>In standard matrix calculus, proving \(D = \mathrm{rowsum}(P \odot \bar{P}) = \mathrm{rowsum}(O \odot \bar{O})\) takes trace and Hadamard gymnastics. In Einstein notation, substitute \(\bar{P}_{im} = \bar{O}_{id} V_{md}\) and regroup:</p>
+    <div class="eq-box">
+      \[ D_i = P_{im}\bar{P}_{im} = P_{im}(\bar{O}_{id} V_{md}) = (P_{im} V_{md})\bar{O}_{id} = O_{id}\bar{O}_{id} \]
+    </div>
+    <p>One line of elementary associativity.</p>
+
+    <h2 id="workflow">5. Bonus: A 3-Step AI-Assisted Learning Workflow</h2>
+    <p>Most of us now ask coding and research agents to help derive formulas when reading papers — yet LLMs default to messy matrix notation full of <code>.transpose(-2, -1)</code> and <code>reshape</code>. I packaged all of these conventions into a lightweight <strong>Agent Skill</strong> (<code>tensor-index-convention/SKILL.md</code>, under 70 lines) alongside a 1-page cheatsheet:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Install the Skill</h4>
+        <p>Drop <code>tensor-index-convention/SKILL.md</code> into your <code>.agents/skills/</code> folder (Claude Code, Cursor, Codex, Antigravity).</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Let AI derive cleanly</h4>
+        <p>Ask your agent to derive RoPE, GQA, MLA, or Linear Attention — it outputs zero-transpose index math &amp; 1-to-1 <code>torch.einsum</code>.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Read with Cheatsheet</h4>
+        <p>Keep the 1-page cheatsheet open for 2–3 papers. No memorization needed — index notation quickly becomes second nature.</p>
+      </div>
+    </div>
+
+    <h2 id="resources">Companion Resources</h2>
+    <div class="resources">
+      <a class="res-card" href="../flash_attention/einstein_notation_intro.html">
+        <strong>Interactive Slides &amp; Playground →</strong>
+        <span>Hover indices to see contractions live, explore \(\delta_{ij}\), and drag the Linear Attention slider.</span>
+      </a>
+      <a class="res-card" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/tensor-index-convention/SKILL.md">
+        <strong>Agent Skill (SKILL.md) →</strong>
+        <span>Lightweight drop-in skill for clean Einstein notation &amp; PyTorch einsum derivations.</span>
+      </a>
+      <a class="res-card" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/einstein_notation_cheatsheet.md">
+        <strong>1-Page Beginner's Cheatsheet →</strong>
+        <span>Rosetta Stone, beginner pitfalls, and Kronecker delta partial derivative quick reference.</span>
+      </a>
+      <a class="res-card" href="../flash_attention/matrix_vs_tensor_flash_attention.html">
+        <strong>Next: Topic 01 · FlashAttention →</strong>
+        <span>Side-by-side matrix calculus vs. Einstein notation derivation of the FlashAttention backward kernel.</span>
+      </a>
+    </div>
+
+    <footer>
+      <span>Tensor Calculus &amp; Einstein Notation for AI Research</span>
+      <a href="../flash_attention/matrix_vs_tensor_flash_attention.html">Next: FlashAttention Backward →</a>
+    </footer>
+  </article>
+
+  <aside class="toc" aria-label="Table of Contents">
+    <div class="toc-title">On this page</div>
+    <a href="#physics">Why no upper/lower indices?</a>
+    <a href="#rules">1. Three Minimal Rules</a>
+    <a href="#rule-1" class="sub">Scalar view</a>
+    <a href="#rule-2" class="sub">Free vs. dummy</a>
+    <a href="#rule-3" class="sub">4D &amp; no transposes</a>
+    <a href="#rosetta" class="sub">Rosetta Stone table</a>
+    <a href="#habits">2. Two Key Habits</a>
+    <a href="#delta">3. Kronecker Delta &amp; Backprop</a>
+    <a href="#delta-def" class="sub">Index renamer</a>
+    <a href="#delta-deriv" class="sub">Partial derivatives</a>
+    <a href="#delta-combo" class="sub">Linear &amp; Softmax backprop</a>
+    <a href="#payoff">4. Linear Attn &amp; FlashAttn</a>
+    <a href="#workflow">5. Agent Skill Workflow</a>
+    <a href="#resources">Resources</a>
+  </aside>
+</div>
+
+</body>
+</html>
