@@ -18,7 +18,7 @@ Use single-character ASCII indices consistently to prevent name collisions acros
 
 | Dimension | Index | Range | Role & Convention |
 | :--- | :---: | :--- | :--- |
-| **Batch / Query Head** | $`b, h`$ | $`b \in [1, B],\, h \in [1, H]`$ | Free indices (suppressed in Stage A, restored in Stages B–C). |
+| **Batch / Query Head** | $`b, h`$ | $`b \in [1, B], h \in [1, H]`$ | Free indices (suppressed in Stage A, restored in Stages B–C). |
 | **KV Head Group** | $`g`$ | $`g \in [1, G]`$ | Key/Value head group index in GQA / MQA ($`G \le H`$). |
 | **Query Sequence** | $`i`$ | $`i \in [1, L]`$ | Primary output sequence axis (free index). |
 | **Key / Value Sequence** | $`j`$ | $`j \in [1, L]`$ | Contraction dummy index for attention weights. |
@@ -45,7 +45,7 @@ which maps directly to `torch.einsum('ij,i->ij', exp_S, 1 / L)`.
 **4. Parenthesized Non-Summation Rule:** In **standalone expressions** without a constraining LHS, wrap any repeated index that must **not** be summed over in parentheses $`(\cdot)`$:
 
 $$
-D_{(i)}\, \bar{P}_{(i)j}, \qquad \frac{\exp(S_{(i)j})}{L_{(i)}}
+D_{(i)} \bar{P}_{(i)j}, \qquad \frac{\exp(S_{(i)j})}{L_{(i)}}
 $$
 
 - With LHS: follow LHS free-index conservation (no parentheses).

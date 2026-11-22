@@ -42,7 +42,7 @@ Use consistent letters so indices never collide across equations:
 | **4D Multi-Head scores** | 2D notation breaks | $`S_{bhij} = Q_{bhik} K_{bhjk}`$ | $`\sum_k Q_{bhik} K_{bhjk}`$ |
 | **4D Attention output** | 2D notation breaks | $`O_{bhid} = P_{bhij} V_{bhjd}`$ | $`\sum_j P_{bhij} V_{bhjd}`$ |
 | **Row sum** | $`r = A \mathbf{1}`$ | $`r_i = \sum_j A_{ij}`$ | sum over $`j`$ |
-| **Row scaling** | $`Y = \mathrm{diag}(a)\, X`$ | $`Y_{ij} = a_i X_{ij}`$ | $`i`$ on LHS $`\implies`$ not summed |
+| **Row scaling** | $`Y = \mathrm{diag}(a) X`$ | $`Y_{ij} = a_i X_{ij}`$ | $`i`$ on LHS $`\implies`$ not summed |
 | **Elementwise (Hadamard)** | $`C = A \odot B`$ | $`C_{ij} = A_{ij} B_{ij}`$ | $`i, j`$ on LHS $`\implies`$ not summed |
 | **Extract diagonal** | $`v = \mathrm{diag}(A)`$ | $`v_i = A_{ii}`$ | $`i`$ on LHS $`\implies`$ not summed |
 | **Trace** | $`t = \mathrm{Tr}(A)`$ | $`t = A_{ii}`$ | $`\sum_i A_{ii}`$ |
@@ -62,13 +62,13 @@ P_{ij} = \frac{\exp(S_{ij})}{\ell_i} \qquad (i \text{ is on the LHS, so do NOT s
 $$
 
 $$
-D_i = P_{im}\, \bar{P}_{im} \qquad (i \text{ is free; } m \text{ is summed})
+D_i = P_{im} \bar{P}_{im} \qquad (i \text{ is free; } m \text{ is summed})
 $$
 
 **No LHS (standalone expression)** $`\implies`$ **wrap non-summed repeated indices in parentheses:**
 
 $$
-D_{(i)}\, \bar{P}_{(i)j}
+D_{(i)} \bar{P}_{(i)j}
 $$
 
 ### Pitfall 2: Reusing a free index for an inner sum
@@ -105,7 +105,7 @@ $$
 **Index renamer:** Multiplying by $`\delta_{ij}`$ replaces the summed index:
 
 $$
-\delta_{ij}\, v_j = v_i
+\delta_{ij} v_j = v_i
 $$
 
 **Where** $`\delta`$ **comes from in partial derivatives:** Because $`S_{i1}, \dots, S_{iL}`$ are independent coordinates in row $`i`$, there are two cases:
