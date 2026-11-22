@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Goodbye Transpose Hell: Einstein Notation for AI &amp; LLMs</title>
+<meta name="description" content="A 10-minute visual guide to Einstein notation for deep learning: free vs. dummy indices, the Kronecker delta, and effortless backpropagation.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script>
   window.KX = {
@@ -11,407 +12,487 @@
       { left: '\\[', right: '\\]', display: true },
       { left: '\\(', right: '\\)', display: false }
     ],
-    throwOnError: false
+    throwOnError: false,
+    macros: {
+      "\\free": "\\textcolor{0969da}{#1}",
+      "\\dum": "\\textcolor{d4580a}{#1}",
+      "\\kd": "\\textcolor{8250df}{\\delta}"
+    }
   };
   function renderAll() {
-    if (window.renderMathInElement) renderMathInElement(document.body, window.KX);
+    if (window.renderMathInElement && !window.__mathDone) {
+      window.__mathDone = true;
+      renderMathInElement(document.body, window.KX);
+    }
   }
   document.addEventListener('DOMContentLoaded', renderAll);
   window.addEventListener('load', renderAll);
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderAll()"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #ffffff;
-    --surface: #f6f8fa;
     --text: #1f2328;
+    --body: #2f363d;
     --muted: #59636e;
     --faint: #8c959f;
     --line: #e5e9ef;
+    --surface: #f6f8fa;
     --accent: #0969da;
-    --accent-bg: #eef6ff;
-    --dummy: #d4580a;
-    --dummy-bg: #fff3e8;
-    --ok: #1a7f37;
-    --ok-bg: #eaf8ee;
-    --bad: #cf222e;
-    --bad-bg: #ffebe9;
-    --radius: 12px;
+
+    --free: #0969da;   --free-bg: #eaf3ff;  --free-line: #b9d6fb;
+    --dummy: #d4580a;  --dummy-bg: #fff2e6; --dummy-line: #f5cfa8;
+    --delta: #8250df;  --delta-bg: #f5f0ff; --delta-line: #dacbfa;
+    --ok: #1a7f37;     --ok-bg: #eaf8ee;    --ok-line: #bfe5c9;
+    --bad: #cf222e;    --bad-bg: #fff0f0;   --bad-line: #f6c6c9;
+
+    --r: 14px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 16.5px;
-    line-height: 1.78;
+    background: #fff;
+    color: var(--body);
+    font-size: 17px;
+    line-height: 1.75;
     -webkit-font-smoothing: antialiased;
   }
-
-  /* ---------- Top Navigation ---------- */
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--line);
-  }
-  .topbar-inner {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 12px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .brand {
-    font-weight: 700;
-    font-size: 14.5px;
-    color: var(--text);
-    text-decoration: none;
-    letter-spacing: -0.01em;
-  }
-  .navlinks {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .navlinks a {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted);
-    text-decoration: none;
-    padding: 5px 12px;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    transition: all 0.15s;
-  }
-  .navlinks a:hover {
-    color: var(--accent);
-    background: var(--accent-bg);
-  }
-  .navlinks a.active {
-    background: var(--text);
-    color: #fff;
-  }
-
-  /* ---------- Layout ---------- */
-  .page {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 48px 24px 96px;
-    display: grid;
-    grid-template-columns: minmax(0, 760px) 220px;
-    gap: 56px;
-    align-items: start;
-  }
-
-  /* ---------- Sidebar TOC ---------- */
-  .toc {
-    position: sticky;
-    top: 84px;
-    font-size: 13px;
-    border-left: 1.5px solid var(--line);
-    padding-left: 16px;
-  }
-  .toc-title {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--faint);
-    margin-bottom: 10px;
-  }
-  .toc a {
-    display: block;
-    color: var(--muted);
-    text-decoration: none;
-    padding: 4px 0;
-    line-height: 1.45;
-    transition: color 0.15s;
-  }
-  .toc a:hover { color: var(--accent); }
-  .toc a.sub {
-    padding-left: 12px;
-    font-size: 12.5px;
-    color: var(--faint);
-  }
-  .toc a.sub:hover { color: var(--accent); }
-
-  /* ---------- Article Header ---------- */
-  .eyebrow {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--accent);
-    background: var(--accent-bg);
-    padding: 4px 11px;
-    border-radius: 999px;
-    margin-bottom: 16px;
-  }
-  h1 {
-    font-size: 38px;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.18;
-    margin-bottom: 16px;
-    color: var(--text);
-  }
-  .meta {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
-    font-size: 14px;
-    color: var(--muted);
-    margin-bottom: 28px;
-  }
-  .meta a {
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 500;
-  }
-  .meta a:hover { text-decoration: underline; }
-  .dot { color: var(--faint); }
-
-  /* ---------- Prose & Headings ---------- */
-  h2 {
-    font-size: 25px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 1.3;
-    margin: 52px 0 16px;
-    padding-top: 12px;
-    border-top: 1px solid var(--line);
-    scroll-margin-top: 76px;
-  }
-  h3 {
-    font-size: 18.5px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin: 30px 0 10px;
-    scroll-margin-top: 76px;
-  }
-  h4 {
-    font-size: 16px;
-    font-weight: 700;
-    margin: 22px 0 8px;
-    color: var(--text);
-  }
-  p { margin-bottom: 16px; }
-  ul, ol {
-    margin: 0 0 18px 22px;
-  }
-  li { margin-bottom: 8px; }
-  li strong { color: var(--text); }
-
-  a { color: var(--accent); }
+  strong, b { color: var(--text); font-weight: 650; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
   code {
     font-family: 'JetBrains Mono', Menlo, monospace;
-    font-size: 0.85em;
+    font-size: 0.84em;
     background: var(--surface);
     border: 1px solid var(--line);
     padding: 1px 6px;
     border-radius: 5px;
     color: var(--text);
   }
-
-  /* ---------- Callouts ---------- */
-  .callout {
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    margin: 22px 0;
-    font-size: 15.5px;
-    line-height: 1.68;
-  }
-  .callout p:last-child { margin-bottom: 0; }
-  .callout.tldr {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--accent);
-  }
-  .callout.insight {
-    background: var(--ok-bg);
-    border: 1px solid #c6ebd0;
-    color: #114b24;
-  }
-  .callout.warn {
-    background: var(--dummy-bg);
-    border: 1px solid #f7d5b6;
-    color: #6b2e07;
-  }
-  .callout-label {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 6px;
-  }
-  .callout.tldr .callout-label { color: var(--accent); }
-  .callout.insight .callout-label { color: var(--ok); }
-  .callout.warn .callout-label { color: var(--dummy); }
-
-  /* ---------- Math Display ---------- */
-  .eq-box {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 14px 20px;
-    margin: 18px 0;
-    overflow-x: auto;
-  }
-  .katex-display {
-    margin: 0.45em 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 2px 0;
-  }
-
-  /* ---------- Table ---------- */
-  .table-wrap {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    overflow-x: auto;
-    margin: 22px 0 26px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 15px;
-  }
-  thead th {
-    background: var(--surface);
-    text-align: left;
-    font-weight: 700;
-    font-size: 13.5px;
-    color: var(--text);
+  pre {
+    font-family: 'JetBrains Mono', Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    background: #0f1720;
+    color: #d6dde6;
+    border-radius: 10px;
     padding: 12px 14px;
-    border-bottom: 1.5px solid var(--line);
-    white-space: nowrap;
+    overflow-x: auto;
+    margin-top: 10px;
   }
-  thead th.ein-col {
-    background: var(--accent-bg);
-    color: #0550ae;
+  pre .r { color: #ff8b8b; }
+  .katex { font-size: 1.08em; }
+  .katex-display { margin: 0.5em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+
+  /* ---------- Progress & top bar ---------- */
+  .progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0;
+    background: linear-gradient(90deg, var(--free), var(--delta));
+    z-index: 60; transition: width 0.08s linear;
   }
-  tbody td {
-    padding: 11px 14px;
-    border-bottom: 1px solid #edf0f4;
-    vertical-align: middle;
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
   }
+  .topbar-inner {
+    max-width: 1140px; margin: 0 auto; padding: 11px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  }
+  .brand { font-weight: 700; font-size: 14.5px; color: var(--text); letter-spacing: -0.01em; }
+  .brand:hover { text-decoration: none; }
+  .navlinks { display: flex; gap: 4px; flex-wrap: wrap; }
+  .navlinks a {
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    padding: 5px 12px; border-radius: 999px; transition: all .15s;
+  }
+  .navlinks a:hover { color: var(--accent); background: var(--free-bg); text-decoration: none; }
+  .navlinks a.active { background: var(--text); color: #fff; }
+
+  /* ---------- Layout ---------- */
+  .page {
+    max-width: 1140px; margin: 0 auto; padding: 52px 24px 100px;
+    display: grid; grid-template-columns: minmax(0, 760px) 220px; gap: 60px; align-items: start;
+  }
+  article > p, article > ul, article > ol { max-width: 700px; }
+  p { margin-bottom: 16px; }
+  ul, ol { margin: 0 0 18px 22px; }
+  li { margin-bottom: 7px; }
+
+  /* ---------- TOC ---------- */
+  .toc {
+    position: sticky; top: 84px; font-size: 13px;
+    border-left: 1.5px solid var(--line); padding-left: 16px;
+  }
+  .toc-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--faint); margin-bottom: 10px;
+  }
+  .toc a {
+    display: block; color: var(--muted); padding: 4px 0 4px 10px; margin-left: -17.5px;
+    border-left: 2px solid transparent; line-height: 1.4; transition: all .15s;
+  }
+  .toc a:hover { color: var(--accent); text-decoration: none; }
+  .toc a.sub { padding-left: 22px; font-size: 12.5px; color: var(--faint); }
+  .toc a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); }
+  .toc a.core-link { color: var(--delta); font-weight: 600; }
+  .toc a.core-link.active { border-left-color: var(--delta); }
+  .toc-legend { margin-top: 22px; display: flex; flex-direction: column; gap: 6px; }
+
+  /* ---------- Hero ---------- */
+  .eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--accent); background: var(--free-bg); padding: 4px 11px; border-radius: 999px; margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 46px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.08; color: var(--text);
+    margin-bottom: 14px;
+  }
+  .subtitle { font-size: 20px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; max-width: 680px; }
+  .meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); margin-bottom: 22px; }
+  .meta .dot { color: var(--faint); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+    padding: 5px 12px; border-radius: 999px; white-space: nowrap;
+  }
+  .chip b { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: inherit; }
+  .chip.free  { background: var(--free-bg);  color: var(--free); }
+  .chip.dummy { background: var(--dummy-bg); color: var(--dummy); }
+  .chip.delta { background: var(--delta-bg); color: var(--delta); }
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 30px; }
+
+  /* Big ideas */
+  .ideas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+  .idea {
+    border: 1px solid var(--line); border-radius: var(--r); padding: 16px 16px 14px; background: #fff;
+    position: relative; overflow: hidden;
+  }
+  .idea::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 4px; }
+  .idea.i1::before { background: var(--faint); }
+  .idea.i2::before { background: linear-gradient(90deg, var(--free), var(--dummy)); }
+  .idea.i3::before { background: var(--delta); }
+  .idea-n { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; color: var(--faint); letter-spacing: .06em; }
+  .idea h4 { font-size: 15px; font-weight: 700; color: var(--text); margin: 4px 0 8px; line-height: 1.35; }
+  .idea .f { font-size: 17px; }
+
+  /* ---------- Headings ---------- */
+  h2 {
+    font-size: 28px; font-weight: 750; letter-spacing: -0.025em; line-height: 1.25; color: var(--text);
+    margin: 64px 0 18px; scroll-margin-top: 80px; display: flex; align-items: center; gap: 12px;
+  }
+  .sec-num {
+    flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--text); color: #fff;
+    font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  h3 {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.012em; color: var(--text);
+    margin: 36px 0 12px; scroll-margin-top: 80px;
+  }
+  h4 { font-size: 16.5px; font-weight: 700; color: var(--text); margin: 26px 0 10px; }
+  .lead { font-size: 18px; color: var(--muted); margin-bottom: 20px; }
+
+  /* ---------- Generic cards ---------- */
+  .card { border: 1px solid var(--line); border-radius: var(--r); padding: 20px 22px; background: #fff; margin: 18px 0; }
+  .eq-box {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 12px 20px; margin: 16px 0; overflow-x: auto; font-size: 19px;
+  }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+
+  /* Myth vs reality */
+  .mr { border-radius: var(--r); padding: 16px 18px; font-size: 15.5px; line-height: 1.6; }
+  .mr.myth { background: var(--bad-bg); border: 1px solid var(--bad-line); }
+  .mr.real { background: var(--ok-bg); border: 1px solid var(--ok-line); }
+  .mr-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; display: block; }
+  .mr.myth .mr-tag { color: var(--bad); }
+  .mr.real .mr-tag { color: var(--ok); }
+
+  /* Takeaway */
+  .takeaway {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--ok-bg); border: 1px solid var(--ok-line); color: #11461f;
+    border-radius: var(--r); padding: 14px 18px; margin: 22px 0; font-size: 15.5px; line-height: 1.6;
+  }
+  .takeaway .tag {
+    flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    background: var(--ok); color: #fff; border-radius: 5px; padding: 2px 8px; margin-top: 3px;
+  }
+  .takeaway b, .takeaway strong { color: #0c3a19; }
+
+  /* ---------- Anatomy (free vs dummy) ---------- */
+  .anatomy {
+    border: 1.5px solid var(--line); border-radius: 18px; padding: 22px 22px 18px; margin: 20px 0;
+    background: linear-gradient(180deg, #fbfcfe, #fff);
+  }
+  .anatomy-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--faint);
+    text-align: center; margin-bottom: 4px;
+  }
+  .anatomy-eq { font-size: 32px; text-align: center; }
+  .anatomy-eq .katex-display { margin: 0.2em 0; }
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .role { border-radius: 12px; padding: 14px 16px; border: 1.5px solid; }
+  .role.free  { background: var(--free-bg);  border-color: var(--free-line); }
+  .role.dummy { background: var(--dummy-bg); border-color: var(--dummy-line); }
+  .role-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .role-name { font-size: 15px; font-weight: 750; }
+  .role.free .role-name  { color: var(--free); }
+  .role.dummy .role-name { color: var(--dummy); }
+  .role-letters { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
+  .role.free .role-letters  { color: var(--free); }
+  .role.dummy .role-letters { color: var(--dummy); }
+  .role ul { margin: 0 0 0 18px; font-size: 14.5px; line-height: 1.55; }
+  .role li { margin-bottom: 3px; }
+  .anatomy-expand { text-align: center; color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+  /* Decision flow */
+  .flow { display: grid; grid-template-columns: 1.1fr auto 1fr; gap: 12px; align-items: center; margin: 18px 0; }
+  .flow-q {
+    border: 1.5px dashed var(--faint); border-radius: 12px; padding: 14px 16px; text-align: center;
+    font-weight: 600; color: var(--text); font-size: 15px; line-height: 1.45;
+  }
+  .flow-arrows { display: flex; flex-direction: column; gap: 34px; font-size: 12px; font-weight: 700; color: var(--faint); text-align: center; }
+  .flow-res { display: flex; flex-direction: column; gap: 10px; }
+  .flow-out { border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.4; font-weight: 500; }
+  .flow-out.free  { background: var(--free-bg);  color: #0a3d7a; border: 1px solid var(--free-line); }
+  .flow-out.dummy { background: var(--dummy-bg); color: #6e2d06; border: 1px solid var(--dummy-line); }
+  .flow-out b { color: inherit; }
+
+  /* Quiz */
+  .quiz { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; margin: 18px 0; }
+  .quiz-head { background: var(--surface); padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--line); }
+  .quiz details { border-bottom: 1px solid var(--line); }
+  .quiz details:last-child { border-bottom: none; }
+  .quiz summary {
+    list-style: none; cursor: pointer; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    font-size: 16px;
+  }
+  .quiz summary::-webkit-details-marker { display: none; }
+  .quiz summary .reveal { font-size: 12px; font-weight: 600; color: var(--accent); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; white-space: nowrap; }
+  .quiz details[open] summary .reveal { color: var(--muted); }
+  .quiz .ans { padding: 0 16px 14px; font-size: 14.5px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  /* Before / After */
+  .cmp { border-radius: var(--r); padding: 16px 18px; border: 1px solid; position: relative; }
+  .cmp.bad { background: #fff; border-color: var(--bad-line); }
+  .cmp.ok  { background: #fff; border-color: var(--ok-line); }
+  .cmp::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 4px; border-radius: var(--r) var(--r) 0 0; }
+  .cmp.bad::before { background: var(--bad); }
+  .cmp.ok::before  { background: var(--ok); }
+  .cmp-tag { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .cmp.bad .cmp-tag { color: var(--bad); }
+  .cmp.ok .cmp-tag  { color: var(--ok); }
+  .cmp .note { font-size: 14px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+  /* Table */
+  .table-wrap { border: 1px solid var(--line); border-radius: var(--r); overflow-x: auto; margin: 18px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  thead th {
+    background: var(--surface); text-align: left; font-weight: 700; font-size: 13px; color: var(--text);
+    padding: 11px 14px; border-bottom: 1.5px solid var(--line); white-space: nowrap;
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
   tbody tr:last-child td { border-bottom: none; }
-  tbody tr:nth-child(even) td { background: #fbfcfd; }
-  tbody td.ein-col {
-    background: #f5faff;
-    color: #0550ae;
-  }
-  tbody tr:nth-child(even) td.ein-col { background: #edf5ff; }
-  .badge-bad {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--bad);
-    background: var(--bad-bg);
-    padding: 2px 9px;
-    border-radius: 999px;
-  }
+  tbody tr:hover td { background: #fafbfc; }
+  td.op { font-weight: 600; color: var(--text); white-space: nowrap; }
+  td.ein { background: #f8fbff; }
+  td .katex { font-size: 1.16em; }
+  tbody tr:hover td.ein { background: #f0f6ff; }
+  .badge-bad { display: inline-block; font-size: 12px; font-weight: 600; color: var(--bad); background: var(--bad-bg); padding: 2px 9px; border-radius: 999px; }
+  .table-cap { font-size: 13px; color: var(--faint); margin-bottom: 18px; }
 
-  /* ---------- Step Cards ---------- */
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin: 20px 0 26px;
-  }
-  .step {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 18px 16px;
-    background: #fff;
-  }
-  .step-num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 10px;
-  }
-  .step h4 { margin: 0 0 6px; font-size: 15.5px; }
-  .step p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.55; }
+  /* Axis dictionary */
+  .axes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 18px; }
+  .ax { display: flex; align-items: center; gap: 12px; border-radius: 10px; padding: 9px 12px; font-size: 14.5px; line-height: 1.35; }
+  .ax > b { font-family: 'JetBrains Mono', monospace; font-size: 17px; min-width: 42px; }
+  .ax.free  { background: var(--free-bg); }  .ax.free > b  { color: var(--free); }
+  .ax.dummy { background: var(--dummy-bg); } .ax.dummy > b { color: var(--dummy); }
+  .ax.neutral { background: var(--surface); } .ax.neutral > b { color: var(--text); }
 
-  /* ---------- Resource Links ---------- */
-  .resources {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 20px 0;
+  /* LHS rule */
+  .lhs {
+    border: 1.5px solid var(--free-line); background: var(--free-bg); border-radius: 18px;
+    padding: 20px 22px; margin: 18px 0; text-align: center;
   }
-  .res-card {
-    display: block;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    text-decoration: none;
-    color: var(--text);
-    background: #fff;
-    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  .lhs-eq { font-size: 26px; }
+  .lhs-say { font-size: 15.5px; color: #0a3d7a; margin-top: 4px; }
+  .lhs-say b { color: #0a3d7a; }
+
+  /* ---------- CORE: Kronecker delta section ---------- */
+  .core {
+    margin: 72px 0 24px; border: 1.5px solid var(--delta-line); border-radius: 22px;
+    background: linear-gradient(180deg, #faf6ff 0%, #ffffff 340px);
+    padding: 6px 30px 30px; position: relative;
   }
-  .res-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(9, 105, 218, 0.08);
+  .core-badge {
+    position: absolute; top: -13px; left: 28px;
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    color: #fff; background: var(--delta); padding: 4px 12px; border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(130, 80, 223, .3);
   }
-  .res-card strong {
-    display: block;
-    font-size: 14.5px;
-    color: var(--accent);
-    margin-bottom: 3px;
+  .core h2 { margin-top: 32px; }
+  .core h2 .sec-num { background: var(--delta); }
+  .core h3 { color: #3b1f74; }
+  .core .lead { color: #5b4a7a; }
+
+  .kd-wrap { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; margin: 14px 0 6px; }
+  .kd-grid { display: grid; grid-template-columns: 26px repeat(4, 46px); gap: 6px; align-items: center; justify-items: center; }
+  .kd-h { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--faint); }
+  .kd-cell {
+    width: 46px; height: 46px; border-radius: 10px; border: 1px solid var(--line); background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #c4cad1;
+    cursor: pointer; transition: transform .12s, box-shadow .12s; user-select: none;
   }
-  .res-card span {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.45;
-    display: block;
+  .kd-cell.diag { background: var(--delta); border-color: var(--delta); color: #fff; }
+  .kd-cell:hover, .kd-cell.sel { transform: scale(1.08); box-shadow: 0 0 0 3px var(--text); }
+  .kd-cap { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted); margin-top: 10px; text-align: center; min-height: 20px; }
+  .kd-def .katex-display { margin: 0.2em 0 0.6em; }
+  .kd-def p { font-size: 15.5px; margin-bottom: 8px; }
+
+  .renamer {
+    background: #fff; border: 1.5px solid var(--delta-line); border-radius: 16px; padding: 18px 20px; margin: 18px 0;
   }
+  .renamer-title { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--delta); margin-bottom: 4px; }
+  .renamer .big { font-size: 24px; text-align: center; }
+  .renamer .expand { font-size: 15px; color: var(--muted); text-align: center; }
+  .renamer .say { font-size: 15px; color: #4a3a6a; text-align: center; margin-top: 6px; margin-bottom: 0; }
+
+  .cases { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 0; }
+  .case { border-radius: 14px; padding: 16px 18px; border: 1.5px solid; text-align: center; }
+  .case.same { background: var(--ok-bg); border-color: var(--ok-line); }
+  .case.diff { background: var(--surface); border-color: var(--line); }
+  .case-tag { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .case.same .case-tag { color: var(--ok); }
+  .case.diff .case-tag { color: var(--muted); }
+  .case .cond { font-size: 19px; margin: 4px 0 2px; }
+  .case .why { font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .case .val { font-size: 22px; margin-top: 6px; }
+  .merge { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px 0; color: var(--delta); font-weight: 700; font-size: 13px; letter-spacing: .04em; }
+  .merge::before, .merge::after { content: ''; height: 1.5px; width: 80px; background: var(--delta-line); }
+  .delta-result {
+    background: var(--delta-bg); border: 2px solid var(--delta); border-radius: 16px; padding: 10px 20px; text-align: center;
+    font-size: 26px; box-shadow: 0 8px 24px rgba(130, 80, 223, .12);
+  }
+  .delta-result .katex-display { margin: 0.25em 0; }
+  .gens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 6px; }
+  .gen { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; text-align: center; }
+  .gen-tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+  .gen .f { font-size: 17px; margin-top: 2px; }
+
+  /* Recipe */
+  .recipe { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: stretch; margin: 16px 0 22px; }
+  .rstep { background: #fff; border: 1.5px solid var(--delta-line); border-radius: 14px; padding: 14px 14px 12px; }
+  .rstep-n {
+    display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--delta); color: #fff;
+    align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+  }
+  .rstep h5 { font-size: 15px; font-weight: 750; color: var(--text); margin: 8px 0 3px; }
+  .rstep p { font-size: 13.5px; color: var(--muted); line-height: 1.45; margin: 0; }
+  .rarrow { align-self: center; color: var(--delta); font-size: 20px; font-weight: 700; }
+
+  /* Derivation blocks */
+  .deriv { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin: 14px 0 22px; background: #fff; }
+  .deriv-head {
+    background: var(--surface); padding: 12px 18px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; justify-content: flex-start; gap: 12px; flex-wrap: wrap;
+  }
+  .deriv-head b { font-size: 15.5px; }
+  .deriv-head span { font-size: 14.5px; color: var(--muted); }
+  .deriv-row {
+    display: grid; grid-template-columns: 30px minmax(0, 1fr) 200px; gap: 12px; align-items: center;
+    padding: 10px 18px; border-bottom: 1px dashed #eceff3;
+  }
+  .deriv-row:last-of-type { border-bottom: none; }
+  .deriv-i { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--faint); }
+  .deriv-eq { font-size: 17px; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+  .deriv-note { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .pill {
+    display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    margin-bottom: 3px; white-space: nowrap;
+  }
+  .pill.n { background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+  .pill.d { background: var(--delta-bg); color: var(--delta); border: 1px solid var(--delta-line); }
+  .pill.r { background: var(--dummy-bg); color: var(--dummy); border: 1px solid var(--dummy-line); }
+  .deriv-result {
+    background: var(--ok-bg); border-top: 1px solid var(--ok-line); padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  }
+  .deriv-result .f { font-size: 21px; }
+  .deriv-result .say { font-size: 14px; color: #11461f; font-weight: 500; }
+  .aside-note { font-size: 13.5px; color: var(--muted); padding: 10px 18px; background: #fffaf3; border-top: 1px solid #f6e6cf; }
+
+  /* Identity sheet */
+  .sheet { background: #fff; border: 1.5px solid var(--delta); border-radius: 16px; overflow: hidden; margin: 22px 0 0; }
+  .sheet-head { background: var(--delta); color: #fff; font-size: 12.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 9px 18px; }
+  .sheet-grid { display: grid; grid-template-columns: 1fr 1fr; }
+  .sheet-item { padding: 12px 18px; border-bottom: 1px solid #efe9fb; border-right: 1px solid #efe9fb; }
+  .sheet-item:nth-child(2n) { border-right: none; }
+  .sheet-item:nth-last-child(-n+2) { border-bottom: none; }
+  .sheet-item .f { font-size: 18px; }
+  .sheet-item .lbl { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* Payoff stats */
+  .stat { border-radius: var(--r); padding: 14px 16px; border: 1.5px solid; }
+  .stat.bad { border-color: var(--bad-line); background: var(--bad-bg); }
+  .stat.ok  { border-color: var(--ok-line);  background: var(--ok-bg); }
+  .stat-tag { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .stat.bad .stat-tag { color: var(--bad); }
+  .stat.ok .stat-tag  { color: var(--ok); }
+  .stat .num { font-size: 22px; margin: 4px 0 2px; }
+  .stat .sm { font-size: 13.5px; color: var(--muted); }
+
+  /* Workflow & resources */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 24px; }
+  .step { border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: #fff; }
+  .step-n {
+    display: inline-flex; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff;
+    align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; margin-bottom: 8px;
+  }
+  .step h5 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .step p { font-size: 14px; color: var(--muted); line-height: 1.5; margin: 0; }
+  .resources { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+  .res {
+    display: block; border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; color: var(--text); background: #fff;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .res:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(9,105,218,.08); text-decoration: none; }
+  .res strong { display: block; font-size: 14.5px; color: var(--accent); margin-bottom: 3px; }
+  .res span { font-size: 13px; color: var(--muted); line-height: 1.45; display: block; }
 
   footer {
-    margin-top: 64px;
-    padding-top: 22px;
-    border-top: 1px solid var(--line);
-    font-size: 13.5px;
-    color: var(--muted);
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
+    margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line);
+    font-size: 13.5px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
   }
-  footer a { text-decoration: none; font-weight: 600; }
+  footer a { font-weight: 600; }
 
-  @media (max-width: 960px) {
-    .page { grid-template-columns: 1fr; padding-top: 32px; }
+  @media (max-width: 1000px) {
+    .page { grid-template-columns: 1fr; padding-top: 34px; }
     .toc { display: none; }
-    h1 { font-size: 30px; }
-    .steps, .resources { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    body { font-size: 16px; }
+    h1 { font-size: 34px; }
+    h2 { font-size: 23px; }
+    .ideas, .two, .roles, .cases, .gens, .steps, .resources, .axes, .sheet-grid { grid-template-columns: 1fr; }
+    .flow, .recipe, .kd-wrap { grid-template-columns: 1fr; }
+    .flow-arrows, .rarrow { display: none; }
+    .deriv-row { grid-template-columns: 1fr; gap: 2px; }
+    .deriv-i { display: none; }
+    .core { padding: 4px 16px 20px; }
+    .sheet-item { border-right: none !important; border-bottom: 1px solid #efe9fb !important; }
   }
 </style>
 </head>
 <body>
+
+<div class="progress" id="progress"></div>
 
 <header class="topbar">
   <div class="topbar-inner">
@@ -427,299 +508,437 @@
 </header>
 
 <div class="page">
-  <article>
-    <span class="eyebrow">Foundations · AI &amp; LLM Math</span>
-    <h1>Goodbye Transpose Hell: A 10-Minute Guide to Einstein Notation for AI &amp; LLMs</h1>
+<article>
 
-    <div class="meta">
-      <span>~8 min read</span>
-      <span class="dot">·</span>
-      <a href="../flash_attention/einstein_notation_intro.html">Interactive Slides</a>
-      <span class="dot">·</span>
-      <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/einstein_notation_cheatsheet.md">1-Page Cheatsheet</a>
-      <span class="dot">·</span>
-      <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/tensor-index-convention/SKILL.md">Agent Skill</a>
+  <!-- ======================= HERO ======================= -->
+  <span class="eyebrow">Foundations · AI &amp; LLM Math</span>
+  <h1>Goodbye Transpose Hell</h1>
+  <p class="subtitle">A 10-minute visual guide to Einstein notation for AI &amp; LLMs — three rules, one Kronecker delta, zero transposes.</p>
+  <div class="meta">
+    <span>~10 min read</span><span class="dot">·</span>
+    <a href="../flash_attention/einstein_notation_intro.html">Interactive Slides</a><span class="dot">·</span>
+    <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/einstein_notation_cheatsheet.md">1-Page Cheatsheet</a><span class="dot">·</span>
+    <a href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/tensor-index-convention/SKILL.md">Agent Skill</a>
+  </div>
+
+  <div class="legend">
+    <span class="chip free"><b>i j</b> Free index · kept</span>
+    <span class="chip dummy"><b>k</b> Dummy index · summed</span>
+    <span class="chip delta"><b>δ</b> Kronecker delta · renames</span>
+  </div>
+
+  <div class="ideas">
+    <div class="idea i1">
+      <div class="idea-n">IDEA 01</div>
+      <h4>Every tensor is one indexed scalar</h4>
+      <div class="f">\( Q_{bhik} \in \mathbb{R} \)</div>
     </div>
-
-    <div class="callout tldr">
-      <div class="callout-label">TL;DR</div>
-      <p>You don't need covariant/contravariant indices from general relativity to use Einstein notation in deep learning. With <strong>3 minimal rules</strong> and the <strong>Kronecker delta (\(\delta_{ij}\))</strong>, transposes, \(\mathrm{diag}\), \(\odot\), and matrix-calculus tricks vanish — scaling seamlessly from 2D linear layers to 4D multi-head attention, Linear Attention, and FlashAttention backpropagation.</p>
+    <div class="idea i2">
+      <div class="idea-n">IDEA 02</div>
+      <h4>On the LHS ⇒ kept. Repeated on RHS only ⇒ summed.</h4>
+      <div class="f">\( C_{\free{ij}} = A_{\free{i}\dum{k}} B_{\dum{k}\free{j}} \)</div>
     </div>
-
-    <h2 id="physics">Wait — Do I Need Upper/Lower Indices from Physics?</h2>
-    <p>When people hear <em>"Einstein notation"</em>, they often worry about covariant vs. contravariant indices, curved manifolds, and metric tensors \(g_{\mu\nu}\) from general relativity.</p>
-    <p><strong>You don't need any of that for 99% of LLM math — and it isn't a shortcut:</strong></p>
-    <ul>
-      <li>General relativity operates in <strong>curved spaces</strong> and non-orthogonal coordinate systems, so it must distinguish upper and lower indices to preserve coordinate invariance.</li>
-      <li>Modern deep learning operations (Attention, MLP, MoE, MLA, RoPE) live in <strong>flat Euclidean space with an orthonormal basis</strong>, where the metric tensor is simply the identity \(\delta_{ij}\). Upper and lower indices are numerically identical.</li>
-    </ul>
-    <p>Writing everything as <strong>subscripts loses zero information</strong>. With the three rules below, ordinary scalar algebra replaces whole-matrix transposes and ad-hoc matrix-calculus identities.</p>
-
-    <h2 id="rules">1. Three Minimal Rules: From 1D to 4D</h2>
-
-    <h3 id="rule-1">Rule 1: View Every Tensor as a Single Indexed Scalar</h3>
-    <p>Traditional matrix calculus treats matrices as opaque 2D blocks, which breaks down the moment you hit 3D or 4D tensors. Einstein notation flips the perspective — <strong>focus on one real number at specific coordinates</strong>:</p>
-    <ul>
-      <li>Entry \(k\) of a vector \(u \;\to\; u_k \in \mathbb{R}\)</li>
-      <li>Row \(i\), column \(k\) of a matrix \(A \;\to\; A_{ik} \in \mathbb{R}\)</li>
-      <li>Element \((b, h, i, k)\) of a 4D query tensor \(Q \;\to\; Q_{bhik} \in \mathbb{R}\)</li>
-    </ul>
-    <p>Because every symbol is just an ordinary real number, <strong>commutativity and associativity from elementary algebra immediately come back to life</strong>.</p>
-
-    <h3 id="rule-2">Rule 2: Free Indices vs. Dummy Indices</h3>
-    <p>Start from two familiar operations:</p>
-    <div class="eq-box">
-      \[ s = \sum_{k=1}^{D} u_k v_k \quad \xrightarrow{\text{drop }\sum} \quad s = u_k v_k \]
-      \[ C_{ij} = \sum_{k=1}^{D} A_{ik} B_{kj} \quad \xrightarrow{\text{drop }\sum} \quad C_{ij} = A_{ik} B_{kj} \]
+    <div class="idea i3">
+      <div class="idea-n">IDEA 03</div>
+      <h4>Derivatives become δ, and δ just renames indices</h4>
+      <div class="f">\( \dfrac{\partial x_i}{\partial x_j} = \kd_{ij} \)</div>
     </div>
-    <p>The rule is one sentence:</p>
-    <ul>
-      <li><strong style="color:var(--accent)">Free index</strong> (e.g., \(i, j\)): appears on the <strong>left-hand side (LHS)</strong> \(\implies\) defines the output tensor shape, <strong>never summed</strong>.</li>
-      <li><strong style="color:var(--dummy)">Dummy / contracted index</strong> (e.g., \(k\)): <strong>absent from the LHS, repeated on the RHS</strong> \(\implies\) <strong>automatically summed</strong> (contracted) over its dimension.</li>
-    </ul>
+  </div>
 
-    <h3 id="rule-3">Rule 3: Commutativity &amp; Effortless 4D Scaling (Transposes Vanish)</h3>
-    <p>Because components are plain scalars, factors commute freely — <strong>transposes disappear completely</strong>. Compare attention scores \(S = Q K^\top\):</p>
-    <ul>
-      <li>In matrix notation, you must transpose \(K\) into \(K^\top\) just to make inner dimensions touch.</li>
-      <li>In index notation, whichever two axes you want to contract simply share the same letter \(k\):
-        \[ S_{ij} = Q_{ik} K_{jk} = K_{jk} Q_{ik} \]
-      </li>
-    </ul>
-    <p>Better yet, scaling from 2D to 4D Multi-Head Attention requires <strong>zero new machinery</strong>. Batch (\(b\)) and head (\(h\)) are just two more <strong>free indices</strong> carried unchanged on both sides:</p>
-    <div class="eq-box">
-      \[ S_{bhij} = Q_{bhik} K_{bhjk}, \qquad O_{bhid} = P_{bhij} V_{bhjd} \]
+  <!-- ======================= PHYSICS ======================= -->
+  <h2 id="physics"><span class="sec-num">0</span>No Physics Required</h2>
+  <div class="two">
+    <div class="mr myth">
+      <span class="mr-tag">Myth</span>
+      "Einstein notation means learning covariant/contravariant indices, curved manifolds, and the metric tensor \(g_{\mu\nu}\)."
     </div>
-    <p>No <code>.transpose(1, 2)</code>, no <code>.transpose(-2, -1)</code>, and no prose disclaimers like <em>"applied independently per batch and head."</em></p>
-
-    <h3 id="rosetta">Rosetta Stone: Matrix Calculus ↔ Einstein Notation</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Operation</th>
-            <th>Matrix Calculus</th>
-            <th class="ein-col">Einstein Notation</th>
-            <th>Explicit Meaning</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Dot product</strong></td>
-            <td>\(s = u^\top v\)</td>
-            <td class="ein-col">\(s = u_k v_k\)</td>
-            <td>\(\sum_k u_k v_k\)</td>
-          </tr>
-          <tr>
-            <td><strong>Matrix multiply</strong></td>
-            <td>\(C = AB\)</td>
-            <td class="ein-col">\(C_{ij} = A_{ik} B_{kj}\)</td>
-            <td>\(\sum_k A_{ik} B_{kj}\)</td>
-          </tr>
-          <tr>
-            <td><strong>Attention scores (2D)</strong></td>
-            <td>\(S = QK^\top\)</td>
-            <td class="ein-col">\(S_{ij} = Q_{ik} K_{jk}\)</td>
-            <td>\(\sum_k Q_{ik} K_{jk}\) (no transpose!)</td>
-          </tr>
-          <tr>
-            <td><strong>4D Multi-Head scores</strong></td>
-            <td><span class="badge-bad">2D breaks</span></td>
-            <td class="ein-col">\(S_{bhij} = Q_{bhik} K_{bhjk}\)</td>
-            <td>\(\sum_k Q_{bhik} K_{bhjk}\)</td>
-          </tr>
-          <tr>
-            <td><strong>Row scaling</strong></td>
-            <td>\(Y = \mathrm{diag}(a)X\)</td>
-            <td class="ein-col">\(Y_{ij} = a_i X_{ij}\)</td>
-            <td>\(i\) on LHS \(\implies\) not summed</td>
-          </tr>
-          <tr>
-            <td><strong>Elementwise (Hadamard)</strong></td>
-            <td>\(C = A \odot B\)</td>
-            <td class="ein-col">\(C_{ij} = A_{ij} B_{ij}\)</td>
-            <td>\(i, j\) on LHS \(\implies\) not summed</td>
-          </tr>
-          <tr>
-            <td><strong>Trace</strong></td>
-            <td>\(t = \mathrm{Tr}(A)\)</td>
-            <td class="ein-col">\(t = A_{ii}\)</td>
-            <td>\(\sum_i A_{ii}\)</td>
-          </tr>
-          <tr>
-            <td><strong>Frobenius inner product</strong></td>
-            <td>\(s = \mathrm{Tr}(A^\top B)\)</td>
-            <td class="ein-col">\(s = A_{ij} B_{ij}\)</td>
-            <td>\(\sum_{i,j} A_{ij} B_{ij}\)</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="mr real">
+      <span class="mr-tag">Reality</span>
+      Deep learning (Attention, MLP, MoE, MLA, RoPE) lives in <b>flat Euclidean space with an orthonormal basis</b>. The metric is just the identity \(\delta_{ij}\), so upper and lower indices are identical — <b>subscripts lose zero information</b>.
     </div>
+  </div>
+  <p>General relativity needs upper/lower indices because it works in curved, non-orthogonal coordinates. We don't — so everything below uses plain subscripts and ordinary scalar algebra.</p>
 
-    <h2 id="habits">2. Two Habits That Prevent 90% of Derivation Bugs</h2>
+  <!-- ======================= RULES ======================= -->
+  <h2 id="rules"><span class="sec-num">1</span>Three Minimal Rules</h2>
 
-    <h3>Habit 1: Fix Every Axis Letter Upfront</h3>
-    <p>Assign a permanent letter to each dimension so indices never collide across multi-step derivations:</p>
-    <ul>
-      <li>\(b, h\): Batch, Query Head (free indices); in GQA/MQA, use \(g\) for KV Head Group</li>
-      <li>\(i\): Query sequence position (free output axis)</li>
-      <li>\(j\): Key / Value sequence position</li>
-      <li>\(m, n\): Inner normalization sums (e.g., Softmax denominator) — <strong>never reuse \(j\)</strong></li>
-      <li>\(k\): Query–Key head dimension (\(D_k\)); \(d\): Value / output feature dimension (\(D_v\))</li>
-      <li><strong>Adjoint sensitivity (\(\bar{X}\))</strong>: Reserve the overbar exclusively for the gradient of a scalar loss \(\mathcal{L}\) with respect to any tensor, \(\bar{X} \equiv \partial \mathcal{L} / \partial X\). By construction, \(\bar{X}\) always has the <strong>exact same index shape</strong> as \(X\) (e.g., \(\bar{O}_{id}, \bar{P}_{ij}, \bar{Q}_{ik}\)).</li>
-    </ul>
+  <h3 id="rule-1">Rule 1 · View every tensor as a single indexed scalar</h3>
+  <p>Matrix calculus treats matrices as opaque 2D blocks — and breaks the moment you reach 3D or 4D tensors. Einstein notation focuses on <b>one real number at specific coordinates</b>:</p>
+  <ul>
+    <li>Entry \(k\) of a vector \(u \;\to\; u_k \in \mathbb{R}\)</li>
+    <li>Row \(i\), column \(k\) of a matrix \(A \;\to\; A_{ik} \in \mathbb{R}\)</li>
+    <li>Element \((b, h, i, k)\) of a 4D query tensor \(Q \;\to\; Q_{bhik} \in \mathbb{R}\)</li>
+  </ul>
+  <p>Because every symbol is an ordinary real number, <b>commutativity and associativity from grade-school algebra come back to life</b>.</p>
 
-    <h3>Habit 2: Repeated Index on the RHS? Always Check the LHS First!</h3>
-    <p>Consider Softmax normalization:</p>
-    \[ P_{ij} = \frac{\exp(S_{ij})}{\ell_i} \]
-    <p>The index \(i\) appears twice on the RHS — do we sum over \(i\)? <strong>No.</strong> Follow <strong>LHS Free Index Invariance</strong>:</p>
-    <ul>
-      <li><strong>With an LHS:</strong> Any index present on the LHS (\(i\) in \(P_{ij}\), or \(i\) in \(D_i = P_{im}\bar{P}_{im}\)) is locked as a <strong>free index</strong> and is <strong>never summed</strong> (no redundant parentheses needed). In \(D_i = P_{im}\bar{P}_{im}\), \(i\) is free and \(m\) is summed.</li>
-      <li><strong>Without an LHS</strong> (a standalone expression): wrap non-summed repeated indices in parentheses, e.g. \(D_{(i)}\bar{P}_{(i)j}\).</li>
-    </ul>
+  <h3 id="rule-2">Rule 2 · Free indices vs. dummy indices</h3>
+  <p class="lead">This is the single most important idea in the whole notation. Every index in an equation plays exactly one of two roles:</p>
 
-    <h2 id="delta">3. The Real Superpower: Kronecker Delta (\(\delta_{ij}\)) &amp; Effortless Backprop</h2>
-    <p>If Sections 1–2 make forward equations clean, the <strong>Kronecker delta (\(\delta_{ij}\))</strong> is what turns backward differentiation from matrix-calculus gymnastics into mechanical algebra.</p>
-
-    <h3 id="delta-def">3.1 Definition &amp; Core Intuition: The "Index Renamer"</h3>
-    <p>The Kronecker delta is simply the identity matrix in index form:</p>
-    \[ \delta_{ij} = \begin{cases} 1, & i = j \\ 0, & i \neq j \end{cases} \]
-    <p>When multiplied by any tensor and contracted over a repeated index, <strong>\(\delta\) simply renames that index</strong>:</p>
-    <div class="eq-box">
-      \[ \delta_{ij}\, v_j = v_i, \qquad \delta_{jm}\, A_{im} = A_{ij} \]
-    </div>
-
-    <h3 id="delta-deriv">3.2 Where Does \(\delta\) Come From in Partial Derivatives?</h3>
-    <p>Many readers wonder why \(\delta\) suddenly appears in Softmax or Attention backprop. It comes directly from differentiating independent coordinates.</p>
-    <p>Because \(S_{i1}, \dots, S_{iL}\) are independent coordinates in row \(i\), there are two cases for \(\frac{\partial S_{im}}{\partial S_{ij}}\):</p>
-    <ul>
-      <li><strong>If \(j = m\):</strong> \(S_{im}\) and \(S_{ij}\) are the same variable, so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 1\).</li>
-      <li><strong>If \(j \neq m\):</strong> \(S_{im}\) does not depend on \(S_{ij}\), so \(\dfrac{\partial S_{im}}{\partial S_{ij}} = 0\).</li>
-    </ul>
-    <p>Combining both cases via the Kronecker delta \(\delta_{jm} = \begin{cases} 1, & j = m \\ 0, & j \neq m \end{cases}\) gives:</p>
-    <div class="eq-box">
-      \[ \frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm} \]
-    </div>
-    <p>This generalizes immediately to tensors of any rank — the partial derivative is \(1\) iff <strong>every</strong> index matches, and \(0\) otherwise:</p>
-    \[ \frac{\partial x_i}{\partial x_j} = \delta_{ij}, \qquad \frac{\partial A_{pq}}{\partial A_{ij}} = \delta_{pi}\delta_{qj} \]
-
-    <h3 id="delta-combo">3.3 The Two-Step Combo: Differentiate \(\to \delta \to\) Rename Index</h3>
-    <p>Combine Sections 3.1 and 3.2, and the most common deep-learning derivatives fall out mechanically without ever consulting a matrix-calculus lookup table.</p>
-
-    <h4>Example A: Linear Layer Backprop (Never Guess \(W\) vs. \(W^\top\) Again)</h4>
-    <p>For a linear projection \(Y_{id} = X_{ik} W_{kd}\):</p>
-    <ol>
-      <li>Vector case \(y_i = W_{ik} x_k\) with respect to \(x_j\):
-        \[ \frac{\partial (W_{ik} x_k)}{\partial x_j} = W_{ik} \frac{\partial x_k}{\partial x_j} = W_{ik} \delta_{kj} = W_{ij} \]
-      </li>
-      <li>Full matrix layer adjoint \(\bar{X}_{pq} \equiv \partial \mathcal{L} / \partial X_{pq}\) via the scalar chain rule:
-        \[ \bar{X}_{pq} = \bar{Y}_{id} \frac{\partial Y_{id}}{\partial X_{pq}} = \bar{Y}_{id} \frac{\partial X_{ik}}{\partial X_{pq}} W_{kd} = \bar{Y}_{id} (\delta_{ip}\delta_{kq}) W_{kd} = \bar{Y}_{pd} W_{qd} \]
-        Renaming the free indices \((p, q) \to (i, k)\) yields \(\bar{X}_{ik} = \bar{Y}_{id} W_{kd}\). Zero guessing about left- vs. right-multiplication or transposes — \(\delta\) aligns every axis automatically.
-      </li>
-    </ol>
-
-    <h4>Example B: Softmax Jacobian &amp; Attention Backward Pass</h4>
-    <p>For \(P_{im} = \exp(S_{im}) / \ell_i\) (where \(\ell_i = \sum_n \exp(S_{in})\)), apply the ordinary quotient rule with respect to \(S_{ij}\):</p>
-    <ul>
-      <li>Numerator derivative: \(\dfrac{\partial \exp(S_{im})}{\partial S_{ij}} = \exp(S_{im})\dfrac{\partial S_{im}}{\partial S_{ij}} = \exp(S_{im})\delta_{jm}\)</li>
-      <li>Denominator derivative: \(\dfrac{\partial \ell_i}{\partial S_{ij}} = \sum_n \exp(S_{in})\delta_{jn} = \exp(S_{ij})\)</li>
-    </ul>
-    <p>Plug directly into the quotient rule:</p>
-    <div class="eq-box">
-      \[ \frac{\partial P_{im}}{\partial S_{ij}} = \frac{\exp(S_{im})\delta_{jm} \cdot \ell_i - \exp(S_{im})\exp(S_{ij})}{\ell_i^2} = P_{im}(\delta_{jm} - P_{ij}) \]
-    </div>
-    <p>Apply the chain rule to obtain \(\bar{S}_{ij}\) — \(\delta_{jm}\) immediately renames \(m \to j\):</p>
-    <div class="eq-box">
-      \[ \bar{S}_{ij} = \bar{P}_{im}\frac{\partial P_{im}}{\partial S_{ij}} = \bar{P}_{im} P_{im}\delta_{jm} - P_{ij}(\bar{P}_{im} P_{im}) = P_{ij}\big(\bar{P}_{ij} - D_i\big), \qquad D_i = P_{im}\bar{P}_{im} \]
-    </div>
-
-    <div class="callout insight">
-      <div class="callout-label">Why This Matters</div>
-      <p>The exact same two-step pattern solves <strong>RMSNorm, LayerNorm, Cross-Entropy, and SwiGLU</strong> — no high-order matrix Jacobians required. Repeating an index inside a single tensor also handles trace effortlessly (\(\mathrm{Tr}(A) = A_{ii}\), \(\mathrm{Tr}(A^\top B) = A_{ij}B_{ij}\)).</p>
-    </div>
-
-    <h2 id="payoff">4. Payoff: Linear Attention &amp; FlashAttention in One Line</h2>
-    <p>The real payoff of Einstein notation isn't just cleaner notation — it's <strong>algebraic discovery on paper</strong>.</p>
-
-    <h3>Linear Attention (\(O(L^2 D) \to O(L D^2)\))</h3>
-    <p>Drop Softmax (replacing \(Q, K\) with feature-mapped \(\phi(Q), \phi(K)\)). The unnormalized output is simply a product of three scalars:</p>
-    <div class="eq-box">
-      \[ O_{id} = \underbrace{\big(Q_{ik} K_{jk}\big)}_{S_{ij}:\; O(L^2 D)} V_{jd} = Q_{ik} \underbrace{\big(K_{jk} V_{jd}\big)}_{M_{kd}:\; O(L D^2)} \]
-    </div>
-    <p>Moving the parentheses from <strong>summing \(k\) first</strong> (building an \(L \times L\) attention matrix) to <strong>summing \(j\) first</strong> (building a tiny \(D \times D\) state matrix) reveals the entire speedup at a glance.</p>
-
-    <h3>FlashAttention's Core Backward Identity</h3>
-    <p>In standard matrix calculus, proving \(D = \mathrm{rowsum}(P \odot \bar{P}) = \mathrm{rowsum}(O \odot \bar{O})\) takes trace and Hadamard gymnastics. In Einstein notation, substitute \(\bar{P}_{im} = \bar{O}_{id} V_{md}\) and regroup:</p>
-    <div class="eq-box">
-      \[ D_i = P_{im}\bar{P}_{im} = P_{im}(\bar{O}_{id} V_{md}) = (P_{im} V_{md})\bar{O}_{id} = O_{id}\bar{O}_{id} \]
-    </div>
-    <p>One line of elementary associativity.</p>
-
-    <h2 id="workflow">5. Bonus: A 3-Step AI-Assisted Learning Workflow</h2>
-    <p>Most of us now ask coding and research agents to help derive formulas when reading papers — yet LLMs default to messy matrix notation full of <code>.transpose(-2, -1)</code> and <code>reshape</code>. I packaged all of these conventions into a lightweight <strong>Agent Skill</strong> (<code>tensor-index-convention/SKILL.md</code>, under 70 lines) alongside a 1-page cheatsheet:</p>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <h4>Install the Skill</h4>
-        <p>Drop <code>tensor-index-convention/SKILL.md</code> into your <code>.agents/skills/</code> folder (Claude Code, Cursor, Codex, Antigravity).</p>
+  <div class="anatomy">
+    <div class="anatomy-label">Anatomy of an index equation · matrix multiply</div>
+    <div class="anatomy-eq">\[ C_{\free{ij}} = A_{\free{i}\dum{k}}\, B_{\dum{k}\free{j}} \]</div>
+    <div class="roles">
+      <div class="role free">
+        <div class="role-head"><span class="role-name">Free index</span><span class="role-letters">i, j</span></div>
+        <ul>
+          <li>Appears on the <b>left-hand side</b></li>
+          <li>Kept — it defines the <b>output shape</b></li>
+          <li><b>Never summed</b></li>
+        </ul>
       </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <h4>Let AI derive cleanly</h4>
-        <p>Ask your agent to derive RoPE, GQA, MLA, or Linear Attention — it outputs zero-transpose index math &amp; 1-to-1 <code>torch.einsum</code>.</p>
+      <div class="role dummy">
+        <div class="role-head"><span class="role-name">Dummy index</span><span class="role-letters">k</span></div>
+        <ul>
+          <li>Absent from the LHS, <b>repeated on the RHS</b></li>
+          <li><b>Summed</b> over its full range (contracted)</li>
+          <li>Disappears from the output</li>
+        </ul>
       </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <h4>Read with Cheatsheet</h4>
-        <p>Keep the 1-page cheatsheet open for 2–3 papers. No memorization needed — index notation quickly becomes second nature.</p>
+    </div>
+    <div class="anatomy-expand">Same equation with the hidden sum written out: \( C_{\free{ij}} = \sum_{\dum{k}=1}^{D} A_{\free{i}\dum{k}} B_{\dum{k}\free{j}} \)</div>
+  </div>
+
+  <p>To tell which role an index plays, ask exactly one question:</p>
+  <div class="flow">
+    <div class="flow-q">Does the index appear on the <u>left-hand side</u>?</div>
+    <div class="flow-arrows"><span>YES →</span><span>NO →</span></div>
+    <div class="flow-res">
+      <div class="flow-out free"><b>Free</b> — keep it, never sum it.</div>
+      <div class="flow-out dummy"><b>Dummy</b> — it repeats on the RHS, so sum over it.</div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="quiz-head">Check yourself — which indices are summed?</div>
+    <details>
+      <summary><span>\( y_i = A_{ij}\, x_j \)</span><span class="reveal">Reveal</span></summary>
+      <div class="ans"><span class="chip free"><b>i</b> free</span><span class="chip dummy"><b>j</b> summed</span> Matrix–vector product \(y = Ax\).</div>
+    </details>
+    <details>
+      <summary><span>\( s = A_{ij}\, B_{ij} \)</span><span class="reveal">Reveal</span></summary>
+      <div class="ans"><span class="chip dummy"><b>i, j</b> both summed</span> \(s\) is a scalar — this is \(\mathrm{Tr}(A^\top B)\).</div>
+    </details>
+    <details>
+      <summary><span>\( D_i = P_{im}\, \bar{P}_{im} \)</span><span class="reveal">Reveal</span></summary>
+      <div class="ans"><span class="chip free"><b>i</b> free (on LHS)</span><span class="chip dummy"><b>m</b> summed</span> A row-wise reduction — the FlashAttention \(D_i\) term.</div>
+    </details>
+  </div>
+
+  <h3 id="rule-3">Rule 3 · Factors commute, so transposes vanish — and 4D comes for free</h3>
+  <div class="two">
+    <div class="cmp bad">
+      <span class="cmp-tag">Matrix notation</span>
+      \[ S = Q K^\top \]
+<pre>S = Q.transpose(1, 2) @ \
+    K.transpose(1, 2).transpose(-2, -1)
+<span class="r"># which axis was which again?</span></pre>
+      <div class="note">Transpose \(K\) just to make inner dimensions touch; 4D needs prose like "per batch, per head".</div>
+    </div>
+    <div class="cmp ok">
+      <span class="cmp-tag">Einstein notation</span>
+      \[ S_{\free{ij}} = Q_{\free{i}\dum{k}} K_{\free{j}\dum{k}} = K_{\free{j}\dum{k}} Q_{\free{i}\dum{k}} \]
+      \[ S_{\free{bhij}} = Q_{\free{bhi}\dum{k}} K_{\free{bhj}\dum{k}} \]
+      <div class="note">Contract two axes by giving them the same letter. Batch \(b\) and head \(h\) are just two more <b>free</b> indices.</div>
+    </div>
+  </div>
+
+  <h3 id="rosetta">Rosetta Stone · Matrix calculus ↔ Einstein notation</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Operation</th><th>Matrix calculus</th><th>Einstein notation</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="op">Dot product</td><td>\(s = u^\top v\)</td><td class="ein">\(s = u_{\dum{k}} v_{\dum{k}}\)</td><td>\(\sum_k u_k v_k\)</td></tr>
+        <tr><td class="op">Matrix multiply</td><td>\(C = AB\)</td><td class="ein">\(C_{\free{ij}} = A_{\free{i}\dum{k}} B_{\dum{k}\free{j}}\)</td><td>\(\sum_k A_{ik} B_{kj}\)</td></tr>
+        <tr><td class="op">Attention scores</td><td>\(S = QK^\top\)</td><td class="ein">\(S_{\free{ij}} = Q_{\free{i}\dum{k}} K_{\free{j}\dum{k}}\)</td><td>no transpose</td></tr>
+        <tr><td class="op">4D multi-head scores</td><td><span class="badge-bad">2D breaks</span></td><td class="ein">\(S_{\free{bhij}} = Q_{\free{bhi}\dum{k}} K_{\free{bhj}\dum{k}}\)</td><td>\(\sum_k\) per \((b,h)\)</td></tr>
+        <tr><td class="op">Row scaling</td><td>\(Y = \mathrm{diag}(a)X\)</td><td class="ein">\(Y_{\free{ij}} = a_{\free{i}} X_{\free{ij}}\)</td><td>\(i\) on LHS ⇒ no sum</td></tr>
+        <tr><td class="op">Hadamard product</td><td>\(C = A \odot B\)</td><td class="ein">\(C_{\free{ij}} = A_{\free{ij}} B_{\free{ij}}\)</td><td>\(i, j\) on LHS ⇒ no sum</td></tr>
+        <tr><td class="op">Trace</td><td>\(t = \mathrm{Tr}(A)\)</td><td class="ein">\(t = A_{\dum{ii}}\)</td><td>\(\sum_i A_{ii}\)</td></tr>
+        <tr><td class="op">Frobenius product</td><td>\(s = \mathrm{Tr}(A^\top B)\)</td><td class="ein">\(s = A_{\dum{ij}} B_{\dum{ij}}\)</td><td>\(\sum_{i,j} A_{ij} B_{ij}\)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="table-cap">Blue = free (kept in output) · Orange = dummy (summed away).</div>
+
+  <!-- ======================= HABITS ======================= -->
+  <h2 id="habits"><span class="sec-num">2</span>Two Habits That Prevent Most Bugs</h2>
+
+  <h3>Habit 1 · Give every axis a permanent letter</h3>
+  <div class="axes">
+    <div class="ax free"><b>b h</b><span>Batch, query head</span></div>
+    <div class="ax free"><b>g</b><span>KV head group (GQA / MQA)</span></div>
+    <div class="ax free"><b>i</b><span>Query position (output row)</span></div>
+    <div class="ax free"><b>j</b><span>Key / value position</span></div>
+    <div class="ax dummy"><b>k</b><span>Q·K head dim — usually contracted</span></div>
+    <div class="ax free"><b>d</b><span>Value / output feature dim</span></div>
+    <div class="ax dummy"><b>m n</b><span>Inner sums (softmax) — <b>never reuse j</b></span></div>
+    <div class="ax neutral"><b>X̄</b><span>Gradient \(\partial\mathcal{L}/\partial X\), same shape as \(X\)</span></div>
+  </div>
+
+  <h3>Habit 2 · An index repeats on the RHS? Check the LHS first</h3>
+  <div class="lhs">
+    <div class="lhs-eq">\[ P_{\free{i}\free{j}} = \frac{\exp(S_{\free{i}\free{j}})}{\ell_{\free{i}}} \]</div>
+    <div class="lhs-say">\(i\) appears twice on the right — but it's on the <b>left</b>, so it's <b>free and never summed</b>.</div>
+  </div>
+  <ul>
+    <li><b>With an LHS:</b> any index on the LHS is locked as free. In \(D_{\free{i}} = P_{\free{i}\dum{m}}\bar{P}_{\free{i}\dum{m}}\), \(i\) is free and \(m\) is summed.</li>
+    <li><b>Without an LHS</b> (a standalone expression): parenthesize non-summed repeats, e.g. \(D_{(i)}\bar{P}_{(i)j}\).</li>
+  </ul>
+
+  <!-- ======================= CORE: KRONECKER DELTA ======================= -->
+  <section class="core" id="delta">
+    <span class="core-badge">★ Core idea</span>
+    <h2><span class="sec-num">3</span>Kronecker Delta: The Engine of Tensor Calculus</h2>
+    <p class="lead">Rules 1–2 make forward equations clean. The Kronecker delta \(\kd_{ij}\) is what turns <b>backpropagation</b> from matrix-calculus gymnastics into mechanical renaming.</p>
+
+    <h3 id="delta-def">3.1 · What \(\delta_{ij}\) is: the identity matrix, written as an index</h3>
+    <div class="kd-wrap">
+      <div>
+        <div class="kd-grid" id="kd-grid"></div>
+        <div class="kd-cap" id="kd-cap">hover a cell</div>
+      </div>
+      <div class="kd-def">
+        \[ \kd_{ij} = \begin{cases} 1, &amp; i = j \\ 0, &amp; i \neq j \end{cases} \]
+        <p>Ones on the diagonal, zeros everywhere else — exactly the identity matrix \(I\).</p>
+        <p>Its superpower appears when it's multiplied into another tensor and summed:</p>
       </div>
     </div>
 
-    <h2 id="resources">Companion Resources</h2>
-    <div class="resources">
-      <a class="res-card" href="../flash_attention/einstein_notation_intro.html">
-        <strong>Interactive Slides &amp; Playground →</strong>
-        <span>Hover indices to see contractions live, explore \(\delta_{ij}\), and drag the Linear Attention slider.</span>
-      </a>
-      <a class="res-card" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/tensor-index-convention/SKILL.md">
-        <strong>Agent Skill (SKILL.md) →</strong>
-        <span>Lightweight drop-in skill for clean Einstein notation &amp; PyTorch einsum derivations.</span>
-      </a>
-      <a class="res-card" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/einstein_notation_cheatsheet.md">
-        <strong>1-Page Beginner's Cheatsheet →</strong>
-        <span>Rosetta Stone, beginner pitfalls, and Kronecker delta partial derivative quick reference.</span>
-      </a>
-      <a class="res-card" href="../flash_attention/matrix_vs_tensor_flash_attention.html">
-        <strong>Next: Topic 01 · FlashAttention →</strong>
-        <span>Side-by-side matrix calculus vs. Einstein notation derivation of the FlashAttention backward kernel.</span>
-      </a>
+    <div class="renamer">
+      <div class="renamer-title">The index renamer</div>
+      <div class="big">\[ \kd_{\free{i}\dum{j}}\, v_{\dum{j}} = v_{\free{i}} \qquad\qquad \kd_{\dum{m}\free{j}}\, A_{\free{i}\dum{m}} = A_{\free{ij}} \]</div>
+      <div class="expand">Why? Expand the sum: \( \kd_{i\dum{j}} v_{\dum{j}} = \kd_{i1}v_1 + \kd_{i2}v_2 + \dots + \kd_{iL}v_L \) — every term is zero except \(j = i\).</div>
+      <p class="say">Rule of thumb: <b>δ deletes the sum and swaps the dummy letter for the other one.</b></p>
     </div>
 
-    <footer>
-      <span>Tensor Calculus &amp; Einstein Notation for AI Research</span>
-      <a href="../flash_attention/matrix_vs_tensor_flash_attention.html">Next: FlashAttention Backward →</a>
-    </footer>
-  </article>
+    <h3 id="delta-deriv">3.2 · Where δ comes from: differentiating independent coordinates</h3>
+    <p>Why does \(\delta\) suddenly appear in Softmax and Attention backprop? Because \(S_{i1}, \dots, S_{iL}\) are <b>independent coordinates</b> in row \(i\). Differentiating one by another has only two possible outcomes:</p>
 
-  <aside class="toc" aria-label="Table of Contents">
-    <div class="toc-title">On this page</div>
-    <a href="#physics">Why no upper/lower indices?</a>
-    <a href="#rules">1. Three Minimal Rules</a>
-    <a href="#rule-1" class="sub">Scalar view</a>
-    <a href="#rule-2" class="sub">Free vs. dummy</a>
-    <a href="#rule-3" class="sub">4D &amp; no transposes</a>
-    <a href="#rosetta" class="sub">Rosetta Stone table</a>
-    <a href="#habits">2. Two Key Habits</a>
-    <a href="#delta">3. Kronecker Delta &amp; Backprop</a>
-    <a href="#delta-def" class="sub">Index renamer</a>
-    <a href="#delta-deriv" class="sub">Partial derivatives</a>
-    <a href="#delta-combo" class="sub">Linear &amp; Softmax backprop</a>
-    <a href="#payoff">4. Linear Attn &amp; FlashAttn</a>
-    <a href="#workflow">5. Agent Skill Workflow</a>
-    <a href="#resources">Resources</a>
-  </aside>
+    <div class="cases">
+      <div class="case same">
+        <div class="case-tag">Case 1 · same variable</div>
+        <div class="cond">\( j = m \)</div>
+        <div class="why">\(S_{im}\) and \(S_{ij}\) are the same variable</div>
+        <div class="val">\( \dfrac{\partial S_{im}}{\partial S_{ij}} = 1 \)</div>
+      </div>
+      <div class="case diff">
+        <div class="case-tag">Case 2 · different variable</div>
+        <div class="cond">\( j \neq m \)</div>
+        <div class="why">\(S_{im}\) does not depend on \(S_{ij}\)</div>
+        <div class="val">\( \dfrac{\partial S_{im}}{\partial S_{ij}} = 0 \)</div>
+      </div>
+    </div>
+    <div class="merge">COMBINE BOTH CASES WITH δ</div>
+    <div class="delta-result">\[ \frac{\partial S_{im}}{\partial S_{ij}} = \kd_{jm} \]</div>
+
+    <p style="margin-top:18px">The same logic works at any rank — <b>one δ per pair of matching index slots</b>:</p>
+    <div class="gens">
+      <div class="gen"><div class="gen-tag">Vector</div><div class="f">\( \dfrac{\partial x_i}{\partial x_j} = \kd_{ij} \)</div></div>
+      <div class="gen"><div class="gen-tag">Matrix</div><div class="f">\( \dfrac{\partial A_{pq}}{\partial A_{ij}} = \kd_{pi}\kd_{qj} \)</div></div>
+      <div class="gen"><div class="gen-tag">Function</div><div class="f">\( \dfrac{\partial f(x_m)}{\partial x_j} = f'(x_m)\,\kd_{mj} \)</div></div>
+    </div>
+
+    <h3 id="delta-combo">3.3 · The backprop recipe: differentiate → δ → rename</h3>
+    <div class="recipe">
+      <div class="rstep"><span class="rstep-n">1</span><h5>Write components</h5><p>Express the output as one indexed scalar equation.</p></div>
+      <div class="rarrow">→</div>
+      <div class="rstep"><span class="rstep-n">2</span><h5>Differentiate → δ</h5><p>Every \(\partial(\text{entry})/\partial(\text{entry})\) becomes a Kronecker delta.</p></div>
+      <div class="rarrow">→</div>
+      <div class="rstep"><span class="rstep-n">3</span><h5>Contract → rename</h5><p>Each δ kills a sum and renames an index. Done.</p></div>
+    </div>
+
+    <h4 id="ex-linear">Example A · Linear layer backprop — never guess \(W\) vs. \(W^\top\) again</h4>
+    <div class="deriv">
+      <div class="deriv-head"><b>Forward:</b><span>\( Y_{id} = X_{ik}\, W_{kd} \) &nbsp;·&nbsp; find \( \bar{X}_{pq} \equiv \partial\mathcal{L}/\partial X_{pq} \)</span></div>
+      <div class="deriv-row">
+        <span class="deriv-i">①</span>
+        <div class="deriv-eq">\( \displaystyle \bar{X}_{\free{pq}} = \bar{Y}_{\dum{id}}\, \frac{\partial Y_{\dum{id}}}{\partial X_{\free{pq}}} \)</div>
+        <div class="deriv-note"><span class="pill n">chain rule</span><br>sum over every output entry</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">②</span>
+        <div class="deriv-eq">\( \displaystyle = \bar{Y}_{\dum{id}}\, \frac{\partial X_{\dum{ik}}}{\partial X_{\free{pq}}}\, W_{\dum{kd}} \)</div>
+        <div class="deriv-note"><span class="pill n">substitute</span><br>plug in \(Y_{id} = X_{ik}W_{kd}\)</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">③</span>
+        <div class="deriv-eq">\( \displaystyle = \bar{Y}_{\dum{id}}\; \kd_{\dum{i}\free{p}}\, \kd_{\dum{k}\free{q}}\; W_{\dum{kd}} \)</div>
+        <div class="deriv-note"><span class="pill d">differentiate → δ</span><br>matrix rule from 3.2</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">④</span>
+        <div class="deriv-eq">\( \displaystyle = \bar{Y}_{\free{p}\dum{d}}\, W_{\free{q}\dum{d}} \)</div>
+        <div class="deriv-note"><span class="pill r">δ renames</span><br>\(i \to p\), \(k \to q\)</div>
+      </div>
+      <div class="deriv-result">
+        <span class="f">\( \bar{X}_{\free{ik}} = \bar{Y}_{\free{i}\dum{d}}\, W_{\free{k}\dum{d}} \)</span>
+        <span class="say">\(\equiv \bar{Y} W^\top\) — the transpose falls out automatically.</span>
+      </div>
+    </div>
+
+    <h4 id="ex-softmax">Example B · Softmax Jacobian &amp; the attention backward pass</h4>
+    <div class="deriv">
+      <div class="deriv-head"><b>Forward:</b><span>\( P_{im} = \exp(S_{im}) / \ell_i, \quad \ell_i = \textstyle\sum_n \exp(S_{in}) \)</span></div>
+      <div class="deriv-row">
+        <span class="deriv-i">①</span>
+        <div class="deriv-eq">\( \displaystyle \frac{\partial\, e^{S_{im}}}{\partial S_{ij}} = e^{S_{im}}\, \kd_{mj} \)</div>
+        <div class="deriv-note"><span class="pill d">differentiate → δ</span><br>numerator</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">②</span>
+        <div class="deriv-eq">\( \displaystyle \frac{\partial \ell_i}{\partial S_{ij}} = \sum_{\dum{n}} e^{S_{i\dum{n}}}\, \kd_{\dum{n}j} = e^{S_{ij}} \)</div>
+        <div class="deriv-note"><span class="pill r">δ renames</span><br>denominator, \(n \to j\)</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">③</span>
+        <div class="deriv-eq">\( \displaystyle \frac{\partial P_{im}}{\partial S_{ij}} = \frac{e^{S_{im}}\kd_{mj}\,\ell_i - e^{S_{im}} e^{S_{ij}}}{\ell_i^2} = P_{im}\big(\kd_{mj} - P_{ij}\big) \)</div>
+        <div class="deriv-note"><span class="pill n">quotient rule</span><br>the Softmax Jacobian</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">④</span>
+        <div class="deriv-eq">\( \displaystyle \bar{S}_{\free{ij}} = \sum_{\dum{m}} \bar{P}_{\free{i}\dum{m}}\, P_{\free{i}\dum{m}} \big(\kd_{\dum{m}\free{j}} - P_{\free{ij}}\big) \)</div>
+        <div class="deriv-note"><span class="pill n">chain rule</span><br>\(m\) appears 3×, so write \(\Sigma\) explicitly</div>
+      </div>
+      <div class="deriv-row">
+        <span class="deriv-i">⑤</span>
+        <div class="deriv-eq">\( \displaystyle = \bar{P}_{\free{ij}} P_{\free{ij}} - P_{\free{ij}} \underbrace{\textstyle\sum_{\dum{m}} \bar{P}_{\free{i}\dum{m}} P_{\free{i}\dum{m}}}_{D_i} \)</div>
+        <div class="deriv-note"><span class="pill r">δ renames</span><br>\(\kd_{mj}\) collapses \(\Sigma_m\) to \(m = j\)</div>
+      </div>
+      <div class="deriv-result">
+        <span class="f">\( \bar{S}_{\free{ij}} = P_{\free{ij}}\big(\bar{P}_{\free{ij}} - D_{\free{i}}\big) \)</span>
+        <span class="say">The exact FlashAttention backward formula — no Jacobian matrices built.</span>
+      </div>
+    </div>
+
+    <div class="sheet">
+      <div class="sheet-head">δ identity sheet · keep this nearby</div>
+      <div class="sheet-grid">
+        <div class="sheet-item"><div class="f">\( \kd_{ij}\, v_j = v_i \)</div><div class="lbl">Rename an index (sifting property)</div></div>
+        <div class="sheet-item"><div class="f">\( \dfrac{\partial x_i}{\partial x_j} = \kd_{ij} \)</div><div class="lbl">Derivative of independent coordinates</div></div>
+        <div class="sheet-item"><div class="f">\( \dfrac{\partial A_{pq}}{\partial A_{ij}} = \kd_{pi}\kd_{qj} \)</div><div class="lbl">One δ per index slot</div></div>
+        <div class="sheet-item"><div class="f">\( \kd_{ij}\kd_{jk} = \kd_{ik}, \quad \kd_{ii} = n \)</div><div class="lbl">Chaining δ's · trace of the \(n \times n\) identity</div></div>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <span class="tag">Takeaway</span>
+      <div>Backprop for <b>RMSNorm, LayerNorm, Cross-Entropy, and SwiGLU</b> follows the identical recipe: write components → differentiate into δ → let δ rename. No matrix-calculus lookup table, no transposes to guess.</div>
+    </div>
+  </section>
+
+  <!-- ======================= PAYOFF ======================= -->
+  <h2 id="payoff"><span class="sec-num">4</span>Payoff: Algorithms in One Line</h2>
+  <p>Because every term is a plain scalar, you can freely regroup sums — and sometimes that regrouping <i>is</i> a new algorithm.</p>
+
+  <h3>Linear Attention: \(O(L^2 D) \to O(L D^2)\) by moving one parenthesis</h3>
+  <div class="eq-box">
+    \[ O_{\free{id}} = \underbrace{\big(Q_{\free{i}\dum{k}} K_{\dum{jk}}\big)}_{L \times L} V_{\dum{j}\free{d}} = Q_{\free{i}\dum{k}} \underbrace{\big(K_{\dum{jk}} V_{\dum{j}\free{d}}\big)}_{D \times D} \]
+  </div>
+  <div class="two">
+    <div class="stat bad"><div class="stat-tag">Sum k first</div><div class="num">\(O(L^2 D)\)</div><div class="sm">Builds an \(L \times L\) attention matrix.</div></div>
+    <div class="stat ok"><div class="stat-tag">Sum j first</div><div class="num">\(O(L D^2)\)</div><div class="sm">Builds only a tiny \(D \times D\) state \(M_{kd}\).</div></div>
+  </div>
+
+  <h3>FlashAttention's core backward identity</h3>
+  <p>Matrix calculus needs trace and Hadamard tricks to show \(\mathrm{rowsum}(P \odot \bar{P}) = \mathrm{rowsum}(O \odot \bar{O})\). In index notation, substitute \(\bar{P}_{im} = \bar{O}_{id} V_{md}\) and regroup:</p>
+  <div class="eq-box">
+    \[ D_{\free{i}} = P_{\free{i}\dum{m}}\bar{P}_{\free{i}\dum{m}} = P_{\free{i}\dum{m}}\big(\bar{O}_{\free{i}\dum{d}} V_{\dum{md}}\big) = \big(P_{\free{i}\dum{m}} V_{\dum{md}}\big)\bar{O}_{\free{i}\dum{d}} = O_{\free{i}\dum{d}}\,\bar{O}_{\free{i}\dum{d}} \]
+  </div>
+  <p>One line of grade-school associativity — and \(D_i\) can now be computed from \(O\) and \(\bar{O}\) without ever materializing \(P\).</p>
+
+  <!-- ======================= WORKFLOW ======================= -->
+  <h2 id="workflow"><span class="sec-num">5</span>Bonus: Make Your AI Agent Write It This Way</h2>
+  <p>LLM agents default to matrix notation full of <code>.transpose(-2, -1)</code> and <code>reshape</code>. I packaged every convention above into a lightweight <b>Agent Skill</b> (<code>tensor-index-convention/SKILL.md</code>, under 70 lines) plus a 1-page cheatsheet:</p>
+  <div class="steps">
+    <div class="step"><div class="step-n">1</div><h5>Install the Skill</h5><p>Drop <code>SKILL.md</code> into <code>.agents/skills/</code> (Claude Code, Cursor, Codex, Antigravity).</p></div>
+    <div class="step"><div class="step-n">2</div><h5>Let AI derive</h5><p>Ask for RoPE, GQA, MLA, or Linear Attention — get zero-transpose index math &amp; <code>torch.einsum</code>.</p></div>
+    <div class="step"><div class="step-n">3</div><h5>Read with the cheatsheet</h5><p>Keep it open for 2–3 papers. The notation becomes second nature fast.</p></div>
+  </div>
+
+  <h2 id="resources"><span class="sec-num">→</span>Companion Resources</h2>
+  <div class="resources">
+    <a class="res" href="../flash_attention/einstein_notation_intro.html"><strong>Interactive Slides &amp; Playground →</strong><span>Hover indices to see contractions live, explore δ, and drag the Linear Attention slider.</span></a>
+    <a class="res" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/tensor-index-convention/SKILL.md"><strong>Agent Skill (SKILL.md) →</strong><span>Drop-in skill for clean Einstein notation &amp; PyTorch einsum derivations.</span></a>
+    <a class="res" href="https://github.com/YixuanTan/tensor-calculus-einstein-notation-4-ai-research/blob/main/einstein_notation_cheatsheet.md"><strong>1-Page Beginner's Cheatsheet →</strong><span>Rosetta Stone, pitfalls, and the δ partial-derivative quick reference.</span></a>
+    <a class="res" href="../flash_attention/matrix_vs_tensor_flash_attention.html"><strong>Next · Topic 01: FlashAttention →</strong><span>Side-by-side matrix vs. index derivation of the FlashAttention backward kernel.</span></a>
+  </div>
+
+  <footer>
+    <span>Tensor Calculus &amp; Einstein Notation for AI Research</span>
+    <a href="../flash_attention/matrix_vs_tensor_flash_attention.html">Next: FlashAttention Backward →</a>
+  </footer>
+</article>
+
+<aside class="toc" aria-label="Table of contents">
+  <div class="toc-title">On this page</div>
+  <a href="#physics">0 · No physics required</a>
+  <a href="#rules">1 · Three minimal rules</a>
+  <a href="#rule-2" class="sub">Free vs. dummy</a>
+  <a href="#rule-3" class="sub">No transposes, 4D</a>
+  <a href="#rosetta" class="sub">Rosetta Stone</a>
+  <a href="#habits">2 · Two habits</a>
+  <a href="#delta" class="core-link">3 · Kronecker delta ★</a>
+  <a href="#delta-def" class="sub">Index renamer</a>
+  <a href="#delta-deriv" class="sub">Where δ comes from</a>
+  <a href="#delta-combo" class="sub">Backprop recipe</a>
+  <a href="#ex-linear" class="sub">Linear layer</a>
+  <a href="#ex-softmax" class="sub">Softmax</a>
+  <a href="#payoff">4 · Payoff</a>
+  <a href="#workflow">5 · Agent Skill</a>
+  <div class="toc-legend">
+    <span class="chip free"><b>i</b> free</span>
+    <span class="chip dummy"><b>k</b> summed</span>
+    <span class="chip delta"><b>δ</b> renames</span>
+  </div>
+</aside>
 </div>
 
+<script>
+  /* Kronecker delta grid */
+  (function () {
+    const grid = document.getElementById('kd-grid');
+    const cap = document.getElementById('kd-cap');
+    const N = 4;
+    let html = '<span></span>';
+    for (let j = 1; j <= N; j++) html += `<span class="kd-h">j=${j}</span>`;
+    for (let i = 1; i <= N; i++) {
+      html += `<span class="kd-h">i=${i}</span>`;
+      for (let j = 1; j <= N; j++) {
+        html += `<div class="kd-cell ${i === j ? 'diag' : ''}" data-i="${i}" data-j="${j}">${i === j ? 1 : 0}</div>`;
+      }
+    }
+    grid.innerHTML = html;
+    const show = (el) => {
+      const i = +el.dataset.i, j = +el.dataset.j;
+      grid.querySelectorAll('.kd-cell').forEach(c => c.classList.toggle('sel', c === el));
+      cap.textContent = `δ${i}${j} = ${i === j ? 1 : 0}  ·  ${i === j ? 'same index → 1' : 'different → 0'}`;
+    };
+    grid.querySelectorAll('.kd-cell').forEach(c => {
+      c.addEventListener('mouseenter', () => show(c));
+      c.addEventListener('click', () => show(c));
+    });
+  })();
+
+  /* Reading progress + TOC scrollspy */
+  (function () {
+    const bar = document.getElementById('progress');
+    const links = Array.from(document.querySelectorAll('.toc a'));
+    const targets = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    function onScroll() {
+      const h = document.documentElement;
+      const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+      bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+      let current = targets[0];
+      for (const t of targets) {
+        if (t.getBoundingClientRect().top <= 120) current = t;
+      }
+      links.forEach(a => a.classList.toggle('active', current && a.getAttribute('href') === '#' + current.id));
+    }
+    document.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+</script>
 </body>
 </html>
