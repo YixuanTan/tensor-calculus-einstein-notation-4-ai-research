@@ -8,6 +8,15 @@ missfont.log
 # Private / local-only files
 flash_attention_backward_template.*
 verify_flash_backward.py
+flash_attention/.agents/
+mla/
+**/video_script_*
+**/youtube_script_*
+**/zhihu_post_*
+**/einstein_notation_cheatsheet_print.html
+**/cover_*.jpg
+**/cover_*.png
+**/einstein_notation_table.png
 
 # OS & Editor
 .DS_Store

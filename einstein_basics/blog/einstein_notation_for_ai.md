@@ -2,7 +2,7 @@
 
 > **TL;DR:** You don't need covariant/contravariant indices from general relativity to use Einstein notation in deep learning. With **3 minimal rules** and the **Kronecker delta ($\delta_{ij}$)**, transposes, $\mathrm{diag}$, $\odot$, and matrix-calculus tricks vanish — scaling seamlessly from 2D linear layers to 4D multi-head attention, Linear Attention, and FlashAttention backpropagation.
 >
-> **Companion resources:** [Interactive Slides](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/flash_attention/einstein_notation_intro.html) · [1-Page Cheatsheet](../einstein_notation_cheatsheet.md) · [Agent Skill (`SKILL.md`)](../tensor-index-convention/SKILL.md)
+> **Companion resources:** [Interactive Slides](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/einstein_basics/einstein_notation_intro.html) · [1-Page Cheatsheet](../einstein_notation_cheatsheet.md) · [Agent Skill (`SKILL.md`)](../../tensor-index-convention/SKILL.md)
 
 ---
 
@@ -188,7 +188,7 @@ Most of us now ask coding/research agents to help derive formulas when reading p
 
 I packaged all of the conventions above into a lightweight **Agent Skill** (`tensor-index-convention/SKILL.md`, under 70 lines) alongside a **1-page cheatsheet**:
 
-1. **Install the Skill:** Drop [`tensor-index-convention/SKILL.md`](../tensor-index-convention/SKILL.md) into your `.agents/skills/` folder (works with Claude Code, Cursor, Codex, and Antigravity).
+1. **Install the Skill:** Drop [`tensor-index-convention/SKILL.md`](../../tensor-index-convention/SKILL.md) into your `.agents/skills/` folder (works with Claude Code, Cursor, Codex, and Antigravity).
 2. **Let AI derive cleanly:** Ask your agent to derive RoPE, GQA, MLA, Linear Attention, or RMSNorm — it will output clean index notation with zero transposes and 1-to-1 `torch.einsum` verification.
 3. **Read alongside the Cheatsheet:** Keep [`einstein_notation_cheatsheet.md`](../einstein_notation_cheatsheet.md) open while reading 2–3 papers. You don't need to memorize the rules — they become second nature almost immediately.
 
@@ -196,7 +196,7 @@ I packaged all of the conventions above into a lightweight **Agent Skill** (`ten
 
 ## Resources
 
-- **Interactive Slides & Playground:** [einstein_notation_intro.html](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/flash_attention/einstein_notation_intro.html)
-- **Agent Skill:** [`tensor-index-convention/SKILL.md`](../tensor-index-convention/SKILL.md)
+- **Interactive Slides & Playground:** [einstein_notation_intro.html](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/einstein_basics/einstein_notation_intro.html)
+- **Agent Skill:** [`tensor-index-convention/SKILL.md`](../../tensor-index-convention/SKILL.md)
 - **1-Page Cheatsheet:** [`einstein_notation_cheatsheet.md`](../einstein_notation_cheatsheet.md)
 - **Next in this series:** [Topic 01 — FlashAttention Backward Pass](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/flash_attention/matrix_vs_tensor_flash_attention.html) · [Topic 02 — Sparse Attention (CSR vs. CSC)](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/sparse_attention/sparse_attention_rows_vs_columns.html)
