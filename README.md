@@ -25,7 +25,7 @@ A 10-minute beginner's guide to Einstein notation for deep learning (3 minimal r
 
 - **[English Blog Post (Web)](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/einstein_basics/blog/einstein_notation_for_ai.html)** ([Markdown](einstein_basics/blog/einstein_notation_for_ai.md)): Complete walkthrough from 1D dot products to 4D attention and $\delta_{ij}$ differentiation.
 - **[Interactive Slides & Playground (`einstein_notation_intro.html`)](https://yixuantan.github.io/tensor-calculus-einstein-notation-4-ai-research/einstein_basics/einstein_notation_intro.html)**: Live interactive index highlighter, Kronecker delta visualizer, and Linear Attention complexity slider.
-- **[1-Page Beginner's Cheatsheet (`einstein_notation_cheatsheet.md`)](einstein_basics/einstein_notation_cheatsheet.md)**: Rosetta Stone, pitfalls, and Kronecker delta backprop quick reference.
+- **[1-Page Beginner's Cheatsheet (PDF)](einstein_basics/einstein_notation_cheatsheet.pdf)** ([Markdown](einstein_basics/einstein_notation_cheatsheet.md)): Printable landscape reference covering rules, Rosetta Stone, pitfalls, and Kronecker delta backprop.
 - **[Agent Skill (`tensor-index-convention/SKILL.md`)](tensor-index-convention/SKILL.md)**: Drop-in skill for Claude Code / Cursor / Antigravity to make AI derive clean index notation & `torch.einsum`.
 
 ### Topic 01: FlashAttention Backward Pass (`flash_attention/`)
