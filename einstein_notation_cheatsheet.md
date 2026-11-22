@@ -55,21 +55,21 @@ Use consistent letters so indices never collide across equations:
 ### Pitfall 1: “A letter repeats on the RHS — do I sum it?”
 **Always check the left-hand side (LHS) first!**
 
-- **Present on LHS** $`\implies`$ **NOT summed (free index):**
+**Present on LHS** $`\implies`$ **NOT summed (free index):**
 
-  ```math
-  P_{ij} = \frac{\exp(S_{ij})}{\ell_i} \qquad (i \text{ is on the LHS, so do NOT sum } i)
-  ```
+$$
+P_{ij} = \frac{\exp(S_{ij})}{\ell_i} \qquad (i \text{ is on the LHS, so do NOT sum } i)
+$$
 
-  ```math
-  D_i = P_{im}\, \bar{P}_{im} \qquad (i \text{ is free; } m \text{ is summed})
-  ```
+$$
+D_i = P_{im}\, \bar{P}_{im} \qquad (i \text{ is free; } m \text{ is summed})
+$$
 
-- **No LHS (standalone expression)** $`\implies`$ **wrap non-summed repeated indices in parentheses:**
+**No LHS (standalone expression)** $`\implies`$ **wrap non-summed repeated indices in parentheses:**
 
-  ```math
-  D_{(i)}\, \bar{P}_{(i)j}
-  ```
+$$
+D_{(i)}\, \bar{P}_{(i)j}
+$$
 
 ### Pitfall 2: Reusing a free index for an inner sum
 Never use the same letter for both a free output index and a summation dummy index:
@@ -77,57 +77,58 @@ Never use the same letter for both a free output index and a summation dummy ind
 - **Bad:** $`\ell_i = \sum_j \exp(S_{ij})`$ inside $`P_{ij} = \exp(S_{ij}) / \sum_j \exp(S_{ij})`$
 - **Good:** Use a fresh dummy letter $`m`$ or $`n`$:
 
-  ```math
-  P_{ij} = \frac{\exp(S_{ij})}{\sum_m \exp(S_{im})}
-  ```
+$$
+P_{ij} = \frac{\exp(S_{ij})}{\sum_m \exp(S_{im})}
+$$
 
 ### Pitfall 3: Treating it as mere shorthand instead of a derivation system
 The real payoff of Einstein notation is **algebraic manipulation on paper** — because every term is a plain scalar, you can freely regroup and commute factors:
 
-- **Linear Attention** ($`O(L^2 D) \to O(L D^2)`$) — just scalar associativity:
+**Linear Attention** ($`O(L^2 D) \to O(L D^2)`$) — just scalar associativity:
 
-  ```math
-  O_{id} = \underbrace{(Q_{ik} K_{jk})}_{O(L^2 D)} V_{jd} = Q_{ik} \underbrace{(K_{jk} V_{jd})}_{O(L D^2)}
-  ```
+$$
+O_{id} = \underbrace{(Q_{ik} K_{jk})}_{O(L^2 D)} V_{jd} = Q_{ik} \underbrace{(K_{jk} V_{jd})}_{O(L D^2)}
+$$
 
-- **FlashAttention Backward Identity** — 1 line instead of matrix trace tricks:
+**FlashAttention Backward Identity** — 1 line instead of matrix trace tricks:
 
-  ```math
-  D_i = P_{im} \bar{P}_{im} = P_{im} (\bar{O}_{id} V_{md}) = (P_{im} V_{md}) \bar{O}_{id} = O_{id} \bar{O}_{id}
-  ```
+$$
+D_i = P_{im} \bar{P}_{im} = P_{im} (\bar{O}_{id} V_{md}) = (P_{im} V_{md}) \bar{O}_{id} = O_{id} \bar{O}_{id}
+$$
 
 ---
 
 ## 5. Advanced Starter: Kronecker Delta & Backprop
 
-- **Definition:** $`\delta_{ij} = 1`$ if $`i = j`$, else $`0`$ (the identity matrix in index form).
-- **Index renamer:** Multiplying by $`\delta_{ij}`$ replaces the summed index:
+**Definition:** $`\delta_{ij} = 1`$ if $`i = j`$, else $`0`$ (the identity matrix in index form).
 
-  ```math
-  \delta_{ij}\, v_j = v_i
-  ```
+**Index renamer:** Multiplying by $`\delta_{ij}`$ replaces the summed index:
 
-- **Where** $`\delta`$ **comes from in partial derivatives:** Because $`S_{i1}, \dots, S_{iL}`$ are independent coordinates in row $`i`$, there are two cases:
-  - **If** $`j = m`$: $`S_{im}`$ and $`S_{ij}`$ are the same variable, so $`\dfrac{\partial S_{im}}{\partial S_{ij}} = 1`$.
-  - **If** $`j \neq m`$: $`S_{im}`$ does not depend on $`S_{ij}`$, so $`\dfrac{\partial S_{im}}{\partial S_{ij}} = 0`$.
+$$
+\delta_{ij}\, v_j = v_i
+$$
 
-  Combining both cases via the Kronecker delta ($`\delta_{jm} = 1`$ if $`j = m`$, else $`0`$):
+**Where** $`\delta`$ **comes from in partial derivatives:** Because $`S_{i1}, \dots, S_{iL}`$ are independent coordinates in row $`i`$, there are two cases:
+- **If** $`j = m`$: $`S_{im}`$ and $`S_{ij}`$ are the same variable, so $`\dfrac{\partial S_{im}}{\partial S_{ij}} = 1`$.
+- **If** $`j \neq m`$: $`S_{im}`$ does not depend on $`S_{ij}`$, so $`\dfrac{\partial S_{im}}{\partial S_{ij}} = 0`$.
 
-  ```math
-  \frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm} \qquad \Big(\text{and in general: } \frac{\partial x_i}{\partial x_j} = \delta_{ij}, \quad \frac{\partial A_{pq}}{\partial A_{ij}} = \delta_{pi}\delta_{qj}\Big)
-  ```
+Combining both cases via the Kronecker delta ($`\delta_{jm} = 1`$ if $`j = m`$, else $`0`$):
 
-- **1-line matrix differentiation** (differentiate $`\to \delta \to`$ rename index):
+$$
+\frac{\partial S_{im}}{\partial S_{ij}} = \delta_{jm} \qquad \Big(\text{and in general: } \frac{\partial x_i}{\partial x_j} = \delta_{ij}, \quad \frac{\partial A_{pq}}{\partial A_{ij}} = \delta_{pi}\delta_{qj}\Big)
+$$
 
-  ```math
-  \frac{\partial (W_{ik} x_k)}{\partial x_j} = W_{ik} \frac{\partial x_k}{\partial x_j} = W_{ik} \delta_{kj} = W_{ij}
-  ```
+**1-line matrix differentiation** (differentiate $`\to \delta \to`$ rename index):
 
-- **Softmax Jacobian** (no matrix tricks):
+$$
+\frac{\partial (W_{ik} x_k)}{\partial x_j} = W_{ik} \frac{\partial x_k}{\partial x_j} = W_{ik} \delta_{kj} = W_{ij}
+$$
 
-  ```math
-  \frac{\partial P_{ij}}{\partial S_{im}} = P_{ij}(\delta_{jm} - P_{im})
-  ```
+**Softmax Jacobian** (no matrix tricks):
+
+$$
+\frac{\partial P_{ij}}{\partial S_{im}} = P_{ij}(\delta_{jm} - P_{im})
+$$
 
 ---
 

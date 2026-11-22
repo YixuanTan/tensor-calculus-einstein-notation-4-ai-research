@@ -30,31 +30,30 @@ Use single-character ASCII indices consistently to prevent name collisions acros
 
 ## 2. Notation & Summation Rules
 
-1. **Component-as-Vector**: Do not add hats ($\hat{Q}$) or arrows ($\vec{Q}$) to denote vectors. Write $Q_{ik}$ (fixed $i$, free $k$) for the $i$-th token vector, or $Q_i$ in high-level schematics.
-2. **Adjoint Sensitivity** ($\bar{X}$) **for Gradients**: Reserve the overbar exclusively for the adjoint sensitivity of a scalar loss $\mathcal{L}$ with respect to a tensor, $\bar{X} \equiv \partial \mathcal{L} / \partial X$. $\bar{X}$ always carries the **exact same index shape** as $X$ (e.g., $`\bar{O}_{id}`$, $`\bar{P}_{ij}`$, $`\bar{W}_{kd}`$).
-3. **LHS Free Index Invariance (No Redundant Parentheses)**:
-   When an index appears as a free index on the left-hand side (LHS), it is automatically constrained as free on the right-hand side (RHS). **Do not** wrap it in parentheses or introduce Kronecker deltas on the RHS:
+**1. Component-as-Vector:** Do not add hats ($`\hat{Q}`$) or arrows ($`\vec{Q}`$) to denote vectors. Write $`Q_{ik}`$ (fixed $`i`$, free $`k`$) for the $`i`$-th token vector, or $`Q_i`$ in high-level schematics.
 
-   $$
-   P_{ij} = \frac{\exp(S_{ij})}{L_i} \quad \Longleftrightarrow \quad \text{\texttt{einsum('ij,i->ij', exp\_S, 1/L)}}
-   $$
+**2. Adjoint Sensitivity** ($`\bar{X}`$) **for Gradients:** Reserve the overbar exclusively for the adjoint sensitivity of a scalar loss $`\mathcal{L}`$ with respect to a tensor, $`\bar{X} \equiv \partial \mathcal{L} / \partial X`$. $`\bar{X}`$ always carries the **exact same index shape** as $`X`$ (e.g., $`\bar{O}_{id}`$, $`\bar{P}_{ij}`$, $`\bar{W}_{kd}`$).
 
-4. **Parenthesized Non-Summation Rule**:
-   In **standalone expressions** without a constraining LHS, wrap any repeated index that must **not** be summed over in parentheses $(\cdot)$:
+**3. LHS Free Index Invariance (No Redundant Parentheses):** When an index appears as a free index on the left-hand side (LHS), it is automatically constrained as free on the right-hand side (RHS). **Do not** wrap it in parentheses or introduce Kronecker deltas on the RHS:
 
-   $$
-   D_{(i)}\, \bar{P}_{(i)j}, \qquad \frac{\exp(S_{(i)j})}{L_{(i)}}
-   $$
+$$
+P_{ij} = \frac{\exp(S_{ij})}{L_i} \quad \Longleftrightarrow \quad \text{\texttt{einsum('ij,i->ij', exp\_S, 1/L)}}
+$$
 
-   - With LHS: follow LHS free-index conservation (no parentheses).
-   - Without LHS: parenthesize non-contracted repeated indices.
+**4. Parenthesized Non-Summation Rule:** In **standalone expressions** without a constraining LHS, wrap any repeated index that must **not** be summed over in parentheses $`(\cdot)`$:
 
-5. **Explicit Broadcasting** with $\mathbf{1}$:
-   Avoid implicit bias or scalar broadcasting. Multiply by an explicit all-ones vector $\mathbf{1}$ along the broadcast axis so backward reductions fall out mechanically:
+$$
+D_{(i)}\, \bar{P}_{(i)j}, \qquad \frac{\exp(S_{(i)j})}{L_{(i)}}
+$$
 
-   $$
-   Y_{id} = X_{ik} W_{kd} + \mathbf{1}_i b_d \quad \Longrightarrow \quad \bar{b}_d = \mathbf{1}_i \bar{Y}_{id}
-   $$
+- With LHS: follow LHS free-index conservation (no parentheses).
+- Without LHS: parenthesize non-contracted repeated indices.
+
+**5. Explicit Broadcasting** with $`\mathbf{1}`$: Avoid implicit bias or scalar broadcasting. Multiply by an explicit all-ones vector $`\mathbf{1}`$ along the broadcast axis so backward reductions fall out mechanically:
+
+$$
+Y_{id} = X_{ik} W_{kd} + \mathbf{1}_i b_d \quad \Longrightarrow \quad \bar{b}_d = \mathbf{1}_i \bar{Y}_{id}
+$$
 
 ## 3. Three-Stage Derivation Decomposition
 
