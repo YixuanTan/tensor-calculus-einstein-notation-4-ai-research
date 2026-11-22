@@ -8,6 +8,7 @@ missfont.log
 # Private / local-only files
 AGENT_INSTRUCTIONS.md
 flash_attention_backward_template.*
+flash_attention_complete_derivation.*
 verify_flash_backward.py
 flash_attention/.agents/
 mla/

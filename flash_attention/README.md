@@ -20,7 +20,6 @@ An interactive, side-by-side comparison with expandable intermediate steps is av
 ## Included Documents & Artifacts
 
 - **`matrix_vs_tensor_flash_attention.html` / `index.html`**: Interactive web comparison.
-- **`flash_attention_complete_derivation.pdf` / `.tex`**: Comprehensive 6-page academic document detailing kinematics, chain rules, the scalar invariant identity $D_i = O_{id}\bar{O}_{id}$, and hardware tiling.
 
 ---
 

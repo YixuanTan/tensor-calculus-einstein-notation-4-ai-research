@@ -32,7 +32,6 @@ A 10-minute beginner's guide to Einstein notation for deep learning (3 minimal r
 Complete mathematical derivation of the FlashAttention backward kernel, comparing standard matrix calculus against Einstein notation side by side.
 
 - **[Interactive Visualizer (`matrix_vs_tensor_flash_attention.html`)](flash_attention/matrix_vs_tensor_flash_attention.html)**: Clean, horizontally-aligned side-by-side comparison with expandable intermediate steps and HBM/SRAM memory maps.
-- **[Complete Academic Derivation PDF](flash_attention/flash_attention_complete_derivation.pdf)**: 6-page comprehensive document detailing variations, the softmax Jacobian, the row-reduction invariant $D_i = O_{id}\bar{O}_{id}$, and hardware tiling.
 
 ### Topic 02: Sparse Attention Backward Pass (`sparse_attention/`)
 Interactive and mathematical comparison showing why $\bar{Q}$ sweeps rows (CSR), $\bar{K}/\bar{V}$ sweep columns (CSC), and how index notation reveals `atomicAdd` write conflicts hidden by matrix transposes.
