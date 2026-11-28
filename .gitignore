@@ -11,7 +11,6 @@ flash_attention_backward_template.*
 flash_attention_complete_derivation.*
 verify_flash_backward.py
 flash_attention/.agents/
-mla/
 **/video_script_*
 **/youtube_script_*
 **/zhihu_post_*
@@ -19,6 +18,7 @@ mla/
 **/cover_*.jpg
 **/cover_*.png
 **/einstein_notation_table.png
+**/*.srt
 
 # OS & Editor
 .DS_Store

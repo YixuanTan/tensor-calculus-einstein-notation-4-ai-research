@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek MLA · Matrix Calculus vs. Einstein Notation Tensor Calculus</title>
+<script>
+  /* KaTeX options shared by the page and the interactive widgets.
+     \iF = free index (blue), \iS = summed index (orange), \iP = position index from RoPE (red). */
+  window.KOPTS = {
+    delimiters: [{left:'\\[', right:'\\]', display:true}, {left:'\\(', right:'\\)', display:false}],
+    throwOnError: false,
+    macros: {
+      "\\iF": "{\\color{##0969da}{#1}}",
+      "\\iS": "{\\color{##bc4c00}{#1}}",
+      "\\iP": "{\\color{##cf222e}{#1}}"
+    }
+  };
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, window.KOPTS);"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --text:#1f2328; --muted:#656d76; --faint:#8c959f;
+    --line:#d8dee4; --line-soft:#eaeef2; --panel:#f6f8fa; --accent:#0969da;
+    --ok:#1a7f37; --ok-bg:#dafbe1; --hot:#cf222e; --hot-bg:#ffebe9; --sum:#bc4c00;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:var(--text);line-height:1.55;font-size:15px}
+  .wrap{max-width:1320px;margin:0 auto;padding:40px 32px 64px}
+
+  /* Top topic navigation */
+  .topnav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .topnav a{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:5px 12px;transition:all .15s}
+  .topnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .topnav a.active{background:var(--panel);color:var(--text);border-color:var(--text);font-weight:600}
+
+  /* Header */
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+  header h1{font-size:25px;font-weight:700;letter-spacing:-.015em}
+  header p{color:var(--muted);margin-top:6px;font-size:14px;max-width:860px}
+  .controls button{font:inherit;font-size:13px;font-weight:500;color:var(--text);background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;margin-left:6px}
+  .controls button:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* Sticky column titles */
+  .colhead{position:sticky;top:0;z-index:5;background:#fff;display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);margin-bottom:28px}
+  .colhead div{padding:14px 20px;font-weight:600;font-size:14px;letter-spacing:.01em}
+  .colhead div span{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:2px}
+  .colhead div:first-child{border-right:1px solid var(--line)}
+
+  /* Step section */
+  section.step{margin-bottom:36px}
+  .step-title{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+  .step-num{font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 8px;white-space:nowrap}
+  .step-title h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+
+  .pair{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .cell{padding:16px 20px;min-width:0}
+  .cell + .cell{border-left:1px solid var(--line)}
+  .cell p{margin:6px 0}
+  .cell ul{margin:4px 0 4px 18px}
+  .cell li{margin:3px 0}
+  .ops{margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .ops b{font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-size:11px;margin-right:6px}
+  .katex-display{overflow-x:auto;overflow-y:hidden;padding:2px 0;margin:.6em 0}
+  .note{color:var(--muted);font-size:13px}
+  .bad{color:var(--hot)}
+  .good{color:var(--ok)}
+
+  .rule{margin-top:12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:12px 16px;background:#fff;font-size:14.5px}
+  .rule b{font-weight:600}
+
+  /* Expandable panels */
+  details{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  details > summary{list-style:none;cursor:pointer;padding:10px 16px;font-size:13.5px;font-weight:500;color:var(--accent);user-select:none}
+  details > summary::-webkit-details-marker{display:none}
+  details > summary::before{content:'▸';display:inline-block;width:16px;transition:transform .15s}
+  details[open] > summary::before{transform:rotate(90deg)}
+  details[open] > summary{border-bottom:1px solid var(--line)}
+  .dbody{padding:12px 20px 14px;font-size:14px}
+  .dbody p{margin:6px 0}
+  .dbody ul{margin:4px 0 4px 18px}
+  .dbody li{margin:4px 0}
+
+  .sub{display:grid;grid-template-columns:1fr 1fr}
+  .sub .label{grid-column:1 / -1;background:var(--panel);padding:7px 20px;font-size:12.5px;font-weight:600;color:var(--muted);border-top:1px solid var(--line-soft)}
+  .sub .label:first-child{border-top:none}
+  .sub .c{padding:10px 20px 12px;min-width:0;font-size:14px}
+  .sub .c + .c{border-left:1px solid var(--line-soft)}
+  .sub .full{grid-column:1 / -1;padding:0 20px 14px;min-width:0}
+  details.nested{margin-top:2px;border:1px solid var(--line-soft);border-radius:6px;background:var(--panel)}
+  details.nested > summary{padding:7px 12px;font-size:12.5px}
+  details.nested[open] > summary{border-bottom:1px solid var(--line-soft)}
+  details.nested .dbody{background:#fff;border-radius:0 0 6px 6px;padding:12px 16px;font-size:13.5px}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border-bottom:1px solid var(--line-soft);padding:10px 14px;text-align:left;vertical-align:middle}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--panel);border-bottom:1px solid var(--line)}
+  tbody tr:last-child td{border-bottom:none}
+  .tablewrap{border:1px solid var(--line);border-radius:8px;overflow:hidden;overflow-x:auto}
+  tr.total td{background:var(--ok-bg);font-weight:600}
+  .memblock{margin-top:20px}
+  .memblock h3{font-size:15px;font-weight:600;margin-bottom:8px}
+
+  /* ---------- Interactive widgets ---------- */
+  .widget{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .tabs button{font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);background:transparent;border:none;border-right:1px solid var(--line);padding:11px 18px;cursor:pointer}
+  .tabs button.active{background:#fff;color:var(--text);box-shadow:inset 0 -2px 0 var(--accent)}
+  .tabs button:hover{color:var(--accent)}
+  .wtop{padding:18px 24px;border-bottom:1px solid var(--line);overflow-x:auto}
+  .winfo{padding:18px 24px}
+  .ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);min-height:30px}
+  .ctl button{font:inherit;font-size:13px;color:var(--text);background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+  .ctl button:hover{border-color:var(--accent);color:var(--accent)}
+  .ctl button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ctl .sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+
+  /* Index chain */
+  .chain{display:flex;align-items:center;flex-wrap:nowrap;padding:34px 4px 26px;min-height:120px}
+  .chip{position:relative;border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:#fff;font-size:16px;white-space:nowrap}
+  .chip.rot{border:2px solid var(--hot);background:var(--hot-bg)}
+  .chip.cache{border:2px solid var(--ok);background:var(--ok-bg)}
+  .chip .tag{position:absolute;left:50%;transform:translateX(-50%);bottom:-21px;font-size:11px;font-weight:600;color:var(--ok);white-space:nowrap}
+  .chip .tag.muted{color:var(--muted)}
+  .link{width:42px;height:2px;background:#c9d1d9;position:relative;flex:none}
+  .link.wide{width:110px}
+  .link > span{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-size:14px}
+  .grp{position:relative;display:flex;align-items:center;border:2px dashed var(--line);border-radius:9px;padding:7px}
+  .grp .glabel{position:absolute;top:-25px;left:6px;font-size:12px;font-weight:600;white-space:nowrap}
+  .grp.mergeable{border-color:var(--ok);background:rgba(26,127,55,.04)}
+  .grp.mergeable .glabel{color:var(--ok)}
+  .grp.blocked{border-color:var(--hot);background:rgba(207,34,46,.04)}
+  .grp.blocked .glabel{color:var(--hot)}
+  .crow{display:flex;align-items:center;gap:18px}
+  .crow .rl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;width:130px;flex:none}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .legend > span{display:inline-flex;align-items:center;gap:6px}
+  .legend b{font-family:'JetBrains Mono',monospace;font-size:13px}
+  .legend i{display:inline-block;width:16px;height:12px;border-radius:3px}
+
+  .info h3{font-size:15px;font-weight:600;margin-bottom:6px}
+  .info p{margin:8px 0;font-size:14px}
+  .info ul{margin:6px 0 6px 18px;font-size:14px}
+  .info li{margin:4px 0}
+  .eqbox{background:var(--panel);border:1px solid var(--line-soft);border-radius:6px;padding:4px 14px;margin:10px 0;overflow-x:auto}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+  .stat{border:1px solid var(--line);border-radius:6px;padding:10px 14px;min-width:220px;max-width:420px}
+  .stat > span{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
+  .stat b{display:block;font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:2px}
+  .stat em{display:block;font-style:normal;font-size:12.5px;color:var(--muted);margin-top:2px}
+  .stat.bad{border-color:var(--hot);background:var(--hot-bg)}
+  .stat.bad b{color:var(--hot)}
+  .stat.ok{border-color:var(--ok);background:var(--ok-bg)}
+  .stat.ok b{color:var(--ok)}
+
+  /* KV cache calculator */
+  .brow{display:grid;grid-template-columns:240px 1fr 120px;gap:16px;align-items:center;margin:12px 0}
+  .brow .bl{font-size:14px;font-weight:600}
+  .brow .bl em{display:block;font-style:normal;font-weight:400;font-size:12.5px;color:var(--muted)}
+  .bar{height:26px;background:var(--panel);border:1px solid var(--line-soft);border-radius:5px;overflow:hidden}
+  .bar i{display:block;height:100%;min-width:3px;transition:width .25s}
+  .bar i.hot{background:#ff8182}
+  .bar i.acc{background:var(--accent)}
+  .bv{font-family:'JetBrains Mono',monospace;font-size:14px;text-align:right;font-weight:500}
+  input[type=range]{accent-color:var(--accent);width:240px}
+  .ctl b{color:var(--text);font-family:'JetBrains Mono',monospace;min-width:48px}
+
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  footer a{color:var(--accent)}
+
+  @media (max-width:900px){
+    .pair,.sub,.colhead{grid-template-columns:1fr}
+    .cell + .cell,.sub .c + .c{border-left:none;border-top:1px solid var(--line-soft)}
+    .colhead{position:static}
+    .brow{grid-template-columns:1fr}
+    .bv{text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="topnav">
+  <a href="../einstein_basics/einstein_notation_intro.html">00 · Einstein Notation</a>
+  <a href="../flash_attention/matrix_vs_tensor_flash_attention.html">01 · FlashAttention</a>
+  <a href="../sparse_attention/sparse_attention_rows_vs_columns.html">02 · Sparse Attention</a>
+  <a href="matrix_vs_tensor_mla.html" class="active">03 · DeepSeek MLA</a>
+</nav>
+
+<header>
+  <div>
+    <h1>DeepSeek Multi-Head Latent Attention, Derived Two Ways</h1>
+    <p>Four showdowns between matrix calculus (left) and Einstein notation (right). Follow two letters, \(h\) (head) and \(j\) (cached position), and matrix absorption, Decoupled RoPE and the small KV cache all fall out of the indices.</p>
+  </div>
+  <div class="controls">
+    <button onclick="setAll(true)">Expand all</button>
+    <button onclick="setAll(false)">Collapse all</button>
+  </div>
+</header>
+
+<div class="colhead">
+  <div>Matrix Calculus<span>2D matrices, per-head slices, concatenation, transposes</span></div>
+  <div>Einstein Notation Tensor Calculus<span>One letter per axis, Einstein summation, left-hand-side rule</span></div>
+</div>
+
+<!-- ============================================================ STEP 0 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Step 0</span><h2>Notation</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <ul>
+        <li>Hidden states \(X \in \mathbb{R}^{L\times U}\), latent \(C \in \mathbb{R}^{L\times D_c}\).</li>
+        <li>Concatenated weights \(W^{\text{Q}} \in \mathbb{R}^{U\times HD_k}\), \(W^{\text{UK}} \in \mathbb{R}^{D_c\times HD_k}\), \(W^{\text{UV}} \in \mathbb{R}^{D_c\times HD_v}\), \(W^{\text{O}} \in \mathbb{R}^{HD_v\times U}\).</li>
+        <li>\(W_{(h)}\): the column block of head \(h\). \(\mathrm{slice}_h\), \(\mathrm{concat}\): reshape operations.</li>
+        <li>RoPE: a rotation matrix \(\mathbf{R}_p\) applied to one token at position \(p\).</li>
+      </ul>
+    </div>
+    <div class="cell">
+      <ul>
+        <li>\(i\): query position (\(L_q = 1\) at decode) · \(j\): cached key/value position (\(L_{kv}\), e.g. 100K).</li>
+        <li>\(h\): head (\(H=128\)) · \(u\): model dim (\(5120\)) · \(c\): latent (\(D_c=512\)).</li>
+        <li>\(k, k'\): key dim (\(128\)) · \(d\): value dim (\(128\)) · \(r, m\): RoPE dim (\(D_r = 64\)).</li>
+        <li><strong>Summation:</strong> a repeated index is summed. <strong>Left-hand-side rule:</strong> an index on the left is free and never summed.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">Sizes are DeepSeek-V2's. Colors used below: \(\iF{h}\) free index, \(\iS{k}\) summed index, \(\iP{j}\) position index carried by RoPE.</p>
+</section>
+
+<!-- ============================================================ SHOWDOWN 1 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Showdown 1</span><h2>Multi-Head Latent Compression</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <p>A matrix has two slots. Heads and features must be flattened into one axis, then sliced back out:</p>
+      \[ C = XW^{\text{DKV}} \in \mathbb{R}^{L\times D_c} \]
+      \[ K_{\text{cat}} = C\,W^{\text{UK}} \in \mathbb{R}^{L\times HD_k}, \qquad K^{(h)} = \mathrm{slice}_h(K_{\text{cat}}) \]
+      \[ V_{\text{cat}} = C\,W^{\text{UV}}, \qquad Q_{\text{cat}} = X\,W^{\text{Q}}, \qquad \text{then slice each per head} \]
+      <div class="ops"><b>Operations</b>matrix product, reshape, per-head slicing</div>
+    </div>
+    <div class="cell">
+      <p>Every axis gets its own letter. All tokens and all heads in one line each:</p>
+      \[ C_{jc} = X_{ju}\,W^{\text{DKV}}_{uc} \]
+      \[ K_{jhk} = C_{jc}\,W^{\text{UK}}_{chk}, \qquad V_{jhd} = C_{jc}\,W^{\text{UV}}_{chd} \]
+      \[ Q_{ihk} = X_{iu}\,W^{\text{Q}}_{uhk} \]
+      <div class="ops"><b>Operations</b>index contraction</div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:8px">Read it straight off the indices: \(C_{jc}\) carries no \(h\). It is the tensor MLA wants to cache. RoPE is ignored until Showdown 3.</p>
+</section>
+
+<!-- ============================================================ SHOWDOWN 2 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Showdown 2</span><h2>Key &amp; Value Absorption: Where Matrix Associativity Gives the Wrong Answer</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <p><strong>Naive associativity on the concatenated weights:</strong></p>
+      \[ (XW^{\text{Q}})(CW^{\text{UK}})^\top = X\,\underbrace{W^{\text{Q}}\,(W^{\text{UK}})^\top}_{U\times D_c}\,C^\top \in \mathbb{R}^{L\times L} \]
+      <p class="bad"><strong>✗ Wrong.</strong> The product runs over all \(HD_k\) columns, so the 128 heads are summed into a single score map.</p>
+      <p>Correct only per head, and value absorption suddenly needs an explicit sum over heads:</p>
+      \[ S^{(h)} = X\big(W^{\text{Q}}_{(h)}\,W^{\text{UK}\top}_{(h)}\big)C^\top, \qquad O = \sum_{h=1}^{H}\big(P^{(h)}C\big)\big(W^{\text{UV}}_{(h)}W^{\text{O}}_{(h)}\big) \]
+      <div class="ops"><b>Operations</b>slice per head, transpose each slice, remember when \(h\) is summed</div>
+    </div>
+    <div class="cell">
+      <p><strong>Key absorption</strong> (associativity on \(k\)):</p>
+      \[ S_{i\iF{h}j} = X_{iu}\,\underbrace{\big(W^{\text{Q}}_{u\iF{h}\iS{k}}\,W^{\text{UK}}_{c\iF{h}\iS{k}}\big)}_{W^{\text{Q,eff}}_{uhc}}\,C_{jc} = \tilde{Q}_{ihc}\,C_{jc} \]
+      <p><strong>Value absorption</strong> (associativity on \(d\)):</p>
+      \[ O_{iu} = P_{i\iS{h}j}\big(C_{jc}W^{\text{UV}}_{c\iS{h}d}\big)W^{\text{O}}_{\iS{h}du} = \underbrace{\big(P_{ihj}\,C_{jc}\big)}_{\tilde{O}_{ihc}}\,\underbrace{\big(W^{\text{UV}}_{chd}\,W^{\text{O}}_{hdu}\big)}_{W^{\text{O,eff}}_{chu}} \]
+      <div class="ops"><b>Operations</b>reordering scalar factors</div>
+    </div>
+  </div>
+  <div class="rule">
+    <b>Check the left-hand side for \(h\).</b> \(S_{ihj}\) has \(h\), so \(h\) is free and never summed: only \(k\) contracts.
+    \(O_{iu}\) has no \(h\), so \(h\) is summed, and only at the end, because both \(\tilde{O}_{ihc}\) and \(W^{\text{O,eff}}_{chu}\) carry it.
+    The rule that makes the naive matrix version wrong makes this version impossible to get wrong.
+  </div>
+  <p class="note" style="margin-top:8px">Result: decode reads only \(C_{jc}\) from the cache. \(K_{jhk}\) and \(V_{jhd}\) are never formed.</p>
+  <details>
+    <summary>Production note: merge the weights offline, or multiply online?</summary>
+    <div class="dbody">
+      <ul>
+        <li><strong>Offline merge.</strong> \(W^{\text{O,eff}}_{chu}\) has \(512\times128\times5120 \approx 335\)M parameters per layer, about <strong>40 GB</strong> of extra BF16 weights over 60 layers (and prefill still needs the unmerged weights).</li>
+        <li><strong>Online, same bracket order.</strong> With \(L_q = 1\), engines such as vLLM and newer SGLang keep the original weights and run two small batched matmuls:
+          \(\big((P_{ihj}C_{jc})\,W^{\text{UV}}_{chd}\big)\,W^{\text{O}}_{hdu}\) and \(\big((X_{iu}W^{\text{Q}}_{uhk})\,W^{\text{UK}}_{chk}\big)\,C_{jc}\).</li>
+        <li>Either way, \(K_{jhk}\) and \(V_{jhd}\) never exist.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ SHOWDOWN 3 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Showdown 3</span><h2>Why RoPE Blocks Absorption</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <p>No single matrix product rotates every row of \(Q\) by a different angle. Papers write \(\mathrm{RoPE}(\cdot)\), or fall back to one token pair:</p>
+      \[ S^{(h)}_{ij} = x_i^\top W^{\text{Q}}_{(h)}\,\mathbf{R}_i^\top\mathbf{R}_j\,W^{\text{UK}\top}_{(h)}\,c_j \]
+      <p>\(\mathbf{R}_i^\top\) and \(\mathbf{R}_j\) look symmetric. Nothing shows that \(i\) is 1 token while \(j\) is 100K tokens, or that \(h\) sits right next to \(\mathbf{R}_j\).</p>
+      <div class="ops"><b>Operations</b>per-token vectors, transposes, black-box \(\mathrm{RoPE}(\cdot)\)</div>
+    </div>
+    <div class="cell">
+      <p>RoPE is just a 3-index tensor \(R_{pmk}\) (position \(p\), rotated dim \(m\), input dim \(k\)):</p>
+      \[ Q^{\text{rot}}_{ihm} = R_{imk}\,X_{iu}\,W^{\text{Q}}_{uhk}, \qquad K^{\text{rot}}_{jhm} = R_{jmk'}\,C_{jc}\,W^{\text{UK}}_{chk'} \]
+      \[ S_{ihj} = Q^{\text{rot}}_{ihm}K^{\text{rot}}_{jhm} = X_{iu}\,W^{\text{Q}}_{uh\iS{k}}\;\iP{R_{(j-i),\,kk'}}\;W^{\text{UK}}_{ch\iS{k'}}\,C_{jc} \]
+      <p>\(W^{\text{Q}}\) holds \(k\), \(W^{\text{UK}}\) holds \(k'\). The shared index that allowed absorption is gone.</p>
+      <div class="ops"><b>Operations</b>index contraction, renaming a dummy index</div>
+    </div>
+  </div>
+  <details>
+    <summary>Detailed derivation (5 steps)</summary>
+    <div class="sub">
+      <div class="label">3.1 · RoPE on one vector</div>
+      <div class="c">\[ \mathbf{q}^{\text{rot}}_i = \mathbf{R}_i\,\mathbf{q}_i \qquad \text{(one token at a time)} \]</div>
+      <div class="c">\[ v^{\text{rot}}_m = R_{pmk}\,v_k \qquad \text{(}p\text{: position, } m\text{: rotated dim, } k\text{: input dim)} \]</div>
+
+      <div class="label">3.2 · Rotate the query and the key</div>
+      <div class="c">\[ \mathbf{q}^{(h)}_i = W^{\text{Q}\top}_{(h)}x_i, \qquad \mathbf{k}^{(h)}_j = W^{\text{UK}\top}_{(h)}c_j \]</div>
+      <div class="c">
+        \[ Q^{\text{rot}}_{ihm} = R_{imk}\,X_{iu}\,W^{\text{Q}}_{uhk}, \qquad K^{\text{rot}}_{jhm} = R_{jmk'}\,C_{jc}\,W^{\text{UK}}_{chk'} \]
+        <span class="note">The key's input dim is named \(k'\) so the next product does not repeat \(k\) four times.</span>
+      </div>
+
+      <div class="label">3.3 · Dot product, then reorder scalars</div>
+      <div class="c">\[ S^{(h)}_{ij} = \big(\mathbf{R}_i\mathbf{q}^{(h)}_i\big)^\top\big(\mathbf{R}_j\mathbf{k}^{(h)}_j\big) = \mathbf{q}^{(h)\top}_i\,\mathbf{R}_i^\top\mathbf{R}_j\,\mathbf{k}^{(h)}_j \]</div>
+      <div class="c">
+        \[ S_{ihj} = \big(R_{imk}X_{iu}W^{\text{Q}}_{uhk}\big)\big(R_{jmk'}C_{jc}W^{\text{UK}}_{chk'}\big) \]
+        \[ = X_{iu}\,W^{\text{Q}}_{uhk}\,\big(R_{imk}\,R_{jmk'}\big)\,W^{\text{UK}}_{chk'}\,C_{jc} \]
+      </div>
+
+      <div class="label">3.4 · The middle bracket is a relative rotation (where \((j-i)\) comes from)</div>
+      <div class="c">
+        Each \(2\times 2\) block of \(\mathbf{R}_p\) rotates by angle \(p\theta\). Transposing reverses the rotation (\(\mathbf{R}_i^\top = \mathbf{R}_{-i}\)), and composing two rotations adds their angles:
+        \[ \mathbf{R}_i^\top\mathbf{R}_j = \mathbf{R}_{-i}\,\mathbf{R}_j = \mathbf{R}_{j-i} \]
+      </div>
+      <div class="c">
+        Only \(R_{imk}\) and \(R_{jmk'}\) carry the summed index \(m\). Fix \(i, j\): \(R_{imk} = (\mathbf{R}_i)_{mk} = (\mathbf{R}_i^\top)_{km}\), so summing over \(m\) is matrix multiplication:
+        \[ \sum_m R_{imk}\,R_{jmk'} = \big(\mathbf{R}_i^\top\mathbf{R}_j\big)_{kk'} = \big(\mathbf{R}_{-i}\,\mathbf{R}_j\big)_{kk'} = \big(\mathbf{R}_{j-i}\big)_{kk'} \equiv R_{(j-i),\,kk'} \]
+        <span class="note">\((j-i)\) is just the position slot \(p\) of the same rotation tensor \(R_{p,\,kk'}\), evaluated at \(p = j - i\).</span>
+      </div>
+      <div class="full">
+        <details class="nested">
+          <summary>Step-by-step proof: why \(\mathbf{R}_i^\top\mathbf{R}_j = \mathbf{R}_{-i}\mathbf{R}_j = \mathbf{R}_{j-i}\) (\(2\times 2\) block &amp; Euler's formula)</summary>
+          <div class="dbody">
+            <p><strong>1. Transpose reverses the angle (\(\mathbf{R}_i^\top = \mathbf{R}_{-i}\)):</strong> each \(2\times 2\) diagonal block of \(\mathbf{R}_p\) rotates by \(p\theta\); transposing flips the \(\sin\) signs (\(\cos(-x)=\cos x,\ \sin(-x)=-\sin x\)):</p>
+            \[ \mathbf{R}_i^\top = \begin{pmatrix}\cos(i\theta) & \sin(i\theta) \\ -\sin(i\theta) & \cos(i\theta)\end{pmatrix} = \begin{pmatrix}\cos(-i\theta) & -\sin(-i\theta) \\ \sin(-i\theta) & \cos(-i\theta)\end{pmatrix} = \mathbf{R}_{-i} \]
+            <p><strong>2. Composing rotations adds angles (\(\mathbf{R}_{-i}\mathbf{R}_j = \mathbf{R}_{j-i}\)):</strong> let \(\alpha = -i\theta,\ \beta = j\theta\) (so \(\alpha + \beta = (j-i)\theta\)) and multiply the \(2\times 2\) blocks entry by entry:</p>
+            \[ \mathbf{R}_{-i}\,\mathbf{R}_j = \begin{pmatrix}\cos\alpha & -\sin\alpha \\ \sin\alpha & \cos\alpha\end{pmatrix}\begin{pmatrix}\cos\beta & -\sin\beta \\ \sin\beta & \cos\beta\end{pmatrix} = \begin{pmatrix}\cos\alpha\cos\beta - \sin\alpha\sin\beta & -(\cos\alpha\sin\beta + \sin\alpha\cos\beta) \\ \sin\alpha\cos\beta + \cos\alpha\sin\beta & \cos\alpha\cos\beta - \sin\alpha\sin\beta\end{pmatrix} \]
+            <p>Applying \(\cos\alpha\cos\beta - \sin\alpha\sin\beta = \cos(\alpha+\beta)\) and \(\sin\alpha\cos\beta + \cos\alpha\sin\beta = \sin(\alpha+\beta)\):</p>
+            \[ \mathbf{R}_{-i}\,\mathbf{R}_j = \begin{pmatrix}\cos\big((j-i)\theta\big) & -\sin\big((j-i)\theta\big) \\ \sin\big((j-i)\theta\big) & \cos\big((j-i)\theta\big)\end{pmatrix} = \mathbf{R}_{j-i} \]
+            <p class="note"><strong>1-line intuition (Euler's formula):</strong> a 2D rotation by \(p\theta\) is multiplication by \(e^{\mathrm{i}p\theta}\), so \(e^{-\mathrm{i}i\theta}\cdot e^{\mathrm{i}j\theta} = e^{\mathrm{i}(j-i)\theta}\). Because \(\mathbf{R}_p\) is block-diagonal, every entry \((k,k')\) satisfies \((\mathbf{R}_{-i}\mathbf{R}_j)_{kk'} = (\mathbf{R}_{j-i})_{kk'}\).</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="label">3.5 · Result</div>
+      <div class="c">\[ S^{(h)}_{ij} = x_i^\top W^{\text{Q}}_{(h)}\,\mathbf{R}_{j-i}\,W^{\text{UK}\top}_{(h)}\,c_j \]<span class="note">\(h\) hides in a subscript; the sizes of \(i\) and \(j\) are invisible.</span></div>
+      <div class="c">\[ S_{ihj} = X_{iu}\,W^{\text{Q}}_{uhk}\;\iP{R_{(j-i),\,kk'}}\;W^{\text{UK}}_{chk'}\,C_{jc} \]<span class="note">\(k\neq k'\): the chain between \(W^{\text{Q}}\) and \(W^{\text{UK}}\) is broken by a position-dependent factor.</span></div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ INTERACTIVE -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Interactive</span><h2>Try to Absorb Through RoPE (decode: 1 new token \(i\), 100K cached tokens \(j\))</h2></div>
+  <div class="widget">
+    <div class="tabs" id="ropeTabs">
+      <button data-tab="none">1 · No RoPE</button>
+      <button data-tab="std">2 · Standard RoPE</button>
+      <button data-tab="split">3 · Decoupled RoPE (MLA)</button>
+    </div>
+    <div class="wtop">
+      <div class="ctl" id="ropeCtl"></div>
+      <div id="ropeChain"></div>
+      <div class="legend">
+        <span><b style="color:#0969da">h</b> free index</span>
+        <span><b style="color:#bc4c00">k</b> summed index</span>
+        <span><b style="color:#cf222e">j</b> position index (RoPE)</span>
+        <span><i style="border:2px dashed var(--ok)"></i>can be merged</span>
+        <span><i style="border:2px dashed var(--hot)"></i>blocked</span>
+        <span><i style="border:2px solid var(--ok);background:var(--ok-bg)"></i>stored in KV cache</span>
+      </div>
+    </div>
+    <div class="winfo info" id="ropeInfo"></div>
+  </div>
+</section>
+
+<!-- ============================================================ THE FIX -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Showdown 3</span><h2>The Fix: Decoupled RoPE</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <p>The paper concatenates a content part and a RoPE part for every head:</p>
+      \[ \mathbf{q}_{t,h} = \big[\mathbf{q}^{C}_{t,h};\ \mathbf{q}^{R}_{t,h}\big], \qquad \mathbf{k}_{t,h} = \big[\mathbf{k}^{C}_{t,h};\ \mathbf{k}^{R}_{t}\big] \]
+      \[ \mathbf{k}^{R}_{t} = \mathrm{RoPE}\big(W^{\text{KR}}\mathbf{h}_t\big) \]
+      <p>Why the split is needed, and why \(\mathbf{k}^{R}_t\) loses its head subscript, has to be explained in prose.</p>
+    </div>
+    <div class="cell">
+      <p>Separate the two clashing key-side operations into two branches:</p>
+      \[ S_{ihj} = \tfrac{1}{\sqrt{D_k + D_r}}\Big(\underbrace{\tilde{Q}_{ihc}\,C_{jc}}_{\text{nope: } W^{\text{UK}} \text{ absorbs (no } R_j\text{)}} + \underbrace{Q^{\text{rope}}_{ihm}\,K^{\text{rope}}_{jm}}_{\text{rope: has } R_j,\ \text{shared key (no } h\text{)}}\Big) \]
+      \[ Q^{\text{rope}}_{ihm} = R_{imr}\,X_{iu}W^{\text{QR}}_{uhr}, \qquad K^{\text{rope}}_{jm} = R_{jmr'}\,X_{ju}W^{\text{KR}}_{ur'} \]
+      <p><strong>Result:</strong> neither cached tensor (\(C_{jc}\) or \(K^{\text{rope}}_{jm}\)) carries \(h\). Content keeps per-head \(W^{\text{UK}}\) because \(R_j\) is gone; position keeps \(R_j\) without blowing up cache size because \(K^{\text{rope}}_{jm}\) drops \(h\).</p>
+    </div>
+  </div>
+  <details>
+    <summary>Why sharing \(K^{\text{rope}}_{jm}\) across heads does not cost quality</summary>
+    <div class="dbody">
+      <ul>
+        <li><strong>\(h\) is still free on the left.</strong> In \(S^{\text{rope}}_{i\iF{h}j} = Q^{\text{rope}}_{i\iF{h}m}K^{\text{rope}}_{jm}\), every head reads the shared position key with its own query, so each head still gets its own distance pattern. The content keys \(K_{jhk}\) and values \(V_{jhd}\) keep their full \(h\).</li>
+        <li><strong>What and where separate cleanly.</strong> Inside softmax the sum becomes a product:
+          \(P_{ihj} \propto \exp\big(S^{\text{nope}}_{ihj}\big)\times\exp\big(S^{\text{rope}}_{ihj}\big)\): a position-independent content match times a relative-distance gate.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ SHOWDOWN 4 -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Showdown 4</span><h2>Hardware: Count the Missing \(h\)</h2></div>
+  <div class="pair">
+    <div class="cell">
+      <p>Prefill and decode are described as two procedures. Cache size has to be read from shape annotations, and code needs <code>.view()</code> / <code>.transpose()</code> to match.</p>
+    </div>
+    <div class="cell">
+      <p>A cached tensor costs one number per combination of its indices: drop \(h\) and the cache shrinks by \(H\). Prefill and decode are the same expression with different brackets, and the indices copy straight into <code>torch.einsum</code>.</p>
+    </div>
+  </div>
+
+  <div class="memblock">
+    <h3>4.1 · KV cache per token per layer</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Cached tensor</th><th>Indices</th><th>Numbers / token / layer</th></tr></thead>
+        <tbody>
+          <tr><td>MHA with the same 128 heads: \(K_{jhk},\ V_{jhd}\)</td><td>\(j,\ \iP{h},\ k\,/\,d\)</td><td>\(2\times128\times128 = 32{,}768\)</td></tr>
+          <tr><td>MLA: \(C_{jc}\)</td><td>\(j,\ c\)</td><td>\(512\)</td></tr>
+          <tr><td>MLA: \(K^{\text{rope}}_{jm}\)</td><td>\(j,\ m\)</td><td>\(64\)</td></tr>
+          <tr class="total"><td>MLA total</td><td>no \(h\) anywhere</td><td>\(576\) (≈ 57× smaller)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="memblock">
+    <h3>4.2 · Same cache, any context length</h3>
+    <div class="widget">
+      <div class="wtop" style="border-bottom:none">
+        <div class="ctl">Context length
+          <input type="range" id="ctxRange" min="0" max="7" step="1" value="7">
+          <b id="ctxLabel">128K</b>
+          <span class="sep"></span>tokens · 60 layers · BF16 · one sequence
+        </div>
+        <div class="brow">
+          <div class="bl">MHA, same 128 heads<em>caches \(K_{jhk},\ V_{jhd}\)</em></div>
+          <div class="bar"><i class="hot" id="barMha"></i></div>
+          <div class="bv" id="valMha"></div>
+        </div>
+        <div class="brow">
+          <div class="bl">MLA<em>caches \(C_{jc},\ K^{\text{rope}}_{jm}\)</em></div>
+          <div class="bar"><i class="acc" id="barMla"></i></div>
+          <div class="bv" id="valMla"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="memblock">
+    <h3>4.3 · Prefill vs. decode: two bracketings of one expression</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Stage</th><th>Bottleneck</th><th>Bracketing \(\to\) attention step</th><th>Why it wins</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Prefill</strong><br><span class="note">large \(L_q\)</span></td>
+            <td><strong>Compute</strong></td>
+            <td>\(\big(X_{iu}W^{\text{Q}}_{uhk}\big)\big(C_{jc}W^{\text{UK}}_{chk}\big) \;\to\; Q_{ih\iS{k}}\,K_{jh\iS{k}}\)</td>
+            <td><strong>4× less attention math</strong><br><span class="note">Dot products sum over \(k = 128\) instead of \(c = 512\) (\(K_{jhk}\) is discarded right after).</span></td>
+          </tr>
+          <tr>
+            <td><strong>Decode</strong><br><span class="note">\(L_q = 1\)</span></td>
+            <td><strong>Memory</strong></td>
+            <td>\(\Big(X_{iu}\big(W^{\text{Q}}_{uhk}W^{\text{UK}}_{chk}\big)\Big)C_{jc} \;\to\; \tilde{Q}_{ih\iS{c}}\,C_{j\iS{c}}\)</td>
+            <td><strong>57× less memory read</strong><br><span class="note">Load each \(C_{jc}\) once and reuse it across all 128 heads. 4× more math over \(c = 512\), but decode waits on memory, not compute.</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <details>
+      <summary>Why is prefill compute-bound while decode is memory-bound?</summary>
+      <div class="dbody">
+        <ul>
+          <li><strong>Prefill (large \(L_q\), e.g. 4,096 tokens at once):</strong> each weight or key loaded from HBM is reused across thousands of tokens, so the GPU's Tensor Cores run full speed and compute is the limit.</li>
+          <li><strong>Decode (\(L_q = 1\) token at a time):</strong> in standard MHA, every cached \(K_{jhk}\) loaded from HBM is used for just <strong>1</strong> query and <strong>1</strong> head, leaving compute mostly idle while waiting on HBM reads. Absorbed MLA loads \(C_{jc}\) once and reuses it across all <strong>128</strong> heads.</li>
+        </ul>
+      </div>
+    </details>
+    <p class="note" style="margin-top:8px">The index strings are the code: <code>einsum("uhk,chk-&gt;uhc", W_q, W_uk)</code>, <code>einsum("bihc,bjc-&gt;bihj", Q_tilde, C_kv)</code>. See <a href="verify_mla_absorption.py">verify_mla_absorption.py</a> (float64, matches to 1e-10).</p>
+  </div>
+</section>
+
+<!-- ============================================================ BONUS -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Bonus</span><h2>Training Backprop into the Shared Latent \(C\)</h2></div>
+  <div class="pair">
+    <div class="cell">
+      \[ \bar{C} = \sum_{h=1}^{H}\bar{K}^{(h)}\,W^{\text{UK}\top}_{(h)} + \sum_{h=1}^{H}\bar{V}^{(h)}\,W^{\text{UV}\top}_{(h)} \]
+      <div class="ops"><b>Operations</b>split gradients per head, transpose each slice, explicit sum over \(h\)</div>
+    </div>
+    <div class="cell">
+      \[ \bar{C}_{jc} = \bar{K}_{j\iS{h}k}\,W^{\text{UK}}_{c\iS{h}k} + \bar{V}_{j\iS{h}d}\,W^{\text{UV}}_{c\iS{h}d} \]
+      <div class="ops"><b>Operations</b>\(h\) is absent from \(\bar{C}_{jc}\), so it is summed automatically</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ SUMMARY -->
+<section class="step">
+  <div class="step-title"><span class="step-num">Summary</span><h2>Results Side by Side</h2></div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Quantity</th><th>Matrix calculus</th><th>Einstein Notation Tensor Calculus</th><th>What the indices say</th></tr></thead>
+      <tbody>
+        <tr><td>Latent</td><td>\(C = XW^{\text{DKV}}\)</td><td>\(C_{jc} = X_{ju}W^{\text{DKV}}_{uc}\)</td><td>No \(h\): cache it</td></tr>
+        <tr><td>Key absorption</td><td>\(S^{(h)} = X\big(W^{\text{Q}}_{(h)}W^{\text{UK}\top}_{(h)}\big)C^\top\)</td><td>\(S_{ihj} = \tilde{Q}_{ihc}\,C_{jc}\)</td><td>\(h\) on the left: not summed</td></tr>
+        <tr><td>Value absorption</td><td>\(O = \sum_h \big(P^{(h)}C\big)\big(W^{\text{UV}}_{(h)}W^{\text{O}}_{(h)}\big)\)</td><td>\(O_{iu} = \tilde{O}_{ihc}\,W^{\text{O,eff}}_{chu}\)</td><td>\(h\) not on the left: summed last</td></tr>
+        <tr><td>Standard RoPE</td><td>\(x_i^\top W^{\text{Q}}_{(h)}\mathbf{R}_{j-i}W^{\text{UK}\top}_{(h)}c_j\)</td><td>\(X_{iu}W^{\text{Q}}_{uhk}\,R_{(j-i),kk'}\,W^{\text{UK}}_{chk'}C_{jc}\)</td><td>\(k\neq k'\), and \(R_j\) is glued to \(h\): blocked</td></tr>
+        <tr><td>Decoupled RoPE</td><td>\([\mathbf{q}^C;\mathbf{q}^R]\cdot[\mathbf{k}^C;\mathbf{k}^R]\)</td><td>\(\tilde{Q}_{ihc}C_{jc} + Q^{\text{rope}}_{ihm}K^{\text{rope}}_{jm}\)</td><td>Cache has no \(h\): 576 numbers</td></tr>
+        <tr><td>Backprop into \(C\)</td><td>\(\sum_h \bar{K}^{(h)}W^{\text{UK}\top}_{(h)} + \sum_h \bar{V}^{(h)}W^{\text{UV}\top}_{(h)}\)</td><td>\(\bar{K}_{jhk}W^{\text{UK}}_{chk} + \bar{V}_{jhd}W^{\text{UV}}_{chd}\)</td><td>\(h\) summed automatically</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="memblock">
+    <h3>The series so far</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Topic</th><th>What Einstein notation made obvious</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../einstein_basics/einstein_notation_intro.html">00 · Einstein Notation</a></td><td>Foundations: 3 rules, Kronecker delta backprop, and associativity.</td></tr>
+          <tr><td><a href="../flash_attention/matrix_vs_tensor_flash_attention.html">01 · FlashAttention</a></td><td>Backward math: \(D_i = O_{id}\bar{O}_{id}\) is one step of associativity.</td></tr>
+          <tr><td><a href="../sparse_attention/sparse_attention_rows_vs_columns.html">02 · Sparse Attention</a></td><td>Kernel design: free index = owner, summed index = sweep direction.</td></tr>
+          <tr><td><strong>03 · DeepSeek MLA</strong></td><td>Architecture design: track \(h\) and \(j\), and absorption and Decoupled RoPE follow.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Index convention: <a href="../tensor-index-convention/SKILL.md">tensor-index-convention</a> · Numerical check: <a href="verify_mla_absorption.py">verify_mla_absorption.py</a> · Derivation notes: <a href="matrix_vs_tensor_mla.md">matrix_vs_tensor_mla.md</a>
+</footer>
+
+</div>
+
+<!-- ============================================================ WIDGET TEMPLATES -->
+<!-- Tab 1: no RoPE -->
+<template id="chain-none">
+  <div class="chain">
+    <div class="chip">\(X_{\iF{i}\iS{u}}\)</div>
+    <div class="link"><span>\(\iS{u}\)</span></div>
+    <div class="grp mergeable"><span class="glabel">contract \(k\) once, offline ✓</span>
+      <div class="chip">\(W^{\text{Q}}_{\iS{u}\iF{h}\iS{k}}\)</div>
+      <div class="link"><span>\(\iS{k}\)</span></div>
+      <div class="chip">\(W^{\text{UK}}_{\iS{c}\iF{h}\iS{k}}\)</div>
+    </div>
+    <div class="link"><span>\(\iS{c}\)</span></div>
+    <div class="chip cache">\(C_{\iF{j}\iS{c}}\)<span class="tag">cached</span></div>
+  </div>
+</template>
+<template id="info-none">
+  <h3>No RoPE: absorption works</h3>
+  <div class="eqbox">\[ S_{ihj} = X_{iu}\,\underbrace{\big(W^{\text{Q}}_{uhk}\,W^{\text{UK}}_{chk}\big)}_{W^{\text{Q,eff}}_{uhc}}\,C_{jc} = \tilde{Q}_{ihc}\,C_{jc} \]</div>
+  <p>\(W^{\text{Q}}\) and \(W^{\text{UK}}\) share the summed index \(k\), and neither carries \(i\) or \(j\). Contract \(k\) once, before inference.</p>
+  <div class="stats">
+    <div class="stat ok"><span>KV cache / token / layer</span><b>512</b><em>only \(C_{jc}\), no \(h\)</em></div>
+  </div>
+</template>
+
+<!-- Tab 2: standard RoPE -->
+<template id="chain-std">
+  <div class="chain">
+    <div class="chip">\(X_{\iF{i}\iS{u}}\)</div>
+    <div class="link"><span>\(\iS{u}\)</span></div>
+    <div class="chip">\(W^{\text{Q}}_{\iS{u}\iF{h}\iS{k}}\)</div>
+    <div class="link"><span>\(\iS{k}\)</span></div>
+    <div class="chip rot">\(R_{\iP{(j-i)},\,\iS{k}\iS{k'}}\)</div>
+    <div class="link"><span>\(\iS{k'}\)</span></div>
+    <div class="chip">\(W^{\text{UK}}_{\iS{c}\iF{h}\iS{k'}}\)</div>
+    <div class="link"><span>\(\iS{c}\)</span></div>
+    <div class="chip">\(C_{\iF{j}\iS{c}}\)</div>
+  </div>
+</template>
+<template id="info-std">
+  <h3>Standard RoPE: the shared index is gone</h3>
+  <div class="eqbox">\[ S_{ihj} = X_{iu}\,W^{\text{Q}}_{uhk}\;\iP{R_{(j-i),\,kk'}}\;W^{\text{UK}}_{chk'}\,C_{jc} \]</div>
+  <p>\(W^{\text{Q}}\) holds \(k\), \(W^{\text{UK}}\) holds \(k'\), and a position-dependent rotation sits between them. Pick a strategy above and try to absorb anyway.</p>
+</template>
+
+<template id="chain-A">
+  <div class="chain">
+    <div class="chip">\(X_{\iF{i}\iS{u}}\)</div>
+    <div class="link"><span>\(\iS{u}\)</span></div>
+    <div class="grp blocked"><span class="glabel">merged weight carries \((j-i)\) ✗</span>
+      <div class="chip">\(W^{\text{Q}}_{\iS{u}\iF{h}\iS{k}}\)</div>
+      <div class="link"><span>\(\iS{k}\)</span></div>
+      <div class="chip rot">\(R_{\iP{(j-i)},\,\iS{k}\iS{k'}}\)</div>
+      <div class="link"><span>\(\iS{k'}\)</span></div>
+      <div class="chip">\(W^{\text{UK}}_{\iS{c}\iF{h}\iS{k'}}\)</div>
+    </div>
+    <div class="link"><span>\(\iS{c}\)</span></div>
+    <div class="chip">\(C_{\iF{j}\iS{c}}\)</div>
+  </div>
+</template>
+<template id="info-A">
+  <h3>A · Merge offline: one matrix per distance</h3>
+  <div class="eqbox">\[ W^{\text{Q,eff}}_{\iP{(j-i)},\,uhc} = W^{\text{Q}}_{uhk}\,R_{(j-i),\,kk'}\,W^{\text{UK}}_{chk'} \]</div>
+  <p class="bad"><strong>✗ The merged weight carries \((j-i)\).</strong> You would need a separate \(5120\times128\times512\) matrix for every distance up to 100K.</p>
+</template>
+
+<template id="chain-B">
+  <div class="chain">
+    <div class="chip">\(Q^{\text{rot}}_{\iF{i}\iF{h}\iS{m}}\)<span class="tag muted">1 token: cheap</span></div>
+    <div class="link"><span>\(\iS{m}\)</span></div>
+    <div class="grp blocked"><span class="glabel">query picks up \(j\) ✗</span>
+      <div class="chip rot">\(R_{\iP{j}\iS{m}\iS{k'}}\)</div>
+      <div class="link"><span>\(\iS{k'}\)</span></div>
+      <div class="chip">\(W^{\text{UK}}_{\iS{c}\iF{h}\iS{k'}}\)</div>
+    </div>
+    <div class="link"><span>\(\iS{c}\)</span></div>
+    <div class="chip cache">\(C_{\iF{j}\iS{c}}\)<span class="tag">cached</span></div>
+  </div>
+</template>
+<template id="info-B">
+  <h3>B · Fold \(W^{\text{UK}}\) into the query at decode time</h3>
+  <p>First rotate the single new query, \(Q^{\text{rot}}_{ihm} = R_{imk}X_{iu}W^{\text{Q}}_{uhk}\). That is one token, so \(R_i\) costs nothing. Then fold \(W^{\text{UK}}\) in:</p>
+  <div class="eqbox">\[ \tilde{Q}_{i\iP{j}hc} = Q^{\text{rot}}_{ihm}\,R_{\iP{j}mk'}\,W^{\text{UK}}_{chk'} \]</div>
+  <div class="stats">
+    <div class="stat bad"><span>Folded query per layer, per new token</span><b>≈ 6.6 billion</b><em>shape \(1\times100{,}000\times128\times512\)</em></div>
+    <div class="stat"><span>Without \(R_j\) it would be</span><b>65,536</b><em>\(\tilde{Q}_{ihc} = Q^{\text{rot}}_{ihm}W^{\text{UK}}_{chm}\), shape \(1\times128\times512\)</em></div>
+  </div>
+  <p class="bad"><strong>✗ The query picks up \(j\) from \(R_{jmk'}\).</strong> \(R_i\) alone never blocked absorption; \(R_j\) does.</p>
+</template>
+
+<template id="chain-C">
+  <div class="chain">
+    <div class="chip">\(Q^{\text{rot}}_{\iF{i}\iF{h}\iS{m}}\)<span class="tag muted">1 token: cheap</span></div>
+    <div class="link"><span>\(\iS{m}\)</span></div>
+    <div class="grp blocked"><span class="glabel">key keeps \(h\) ✗</span>
+      <div class="chip rot">\(R_{\iP{j}\iS{m}\iS{k'}}\)</div>
+      <div class="link"><span>\(\iS{k'}\)</span></div>
+      <div class="chip">\(W^{\text{UK}}_{\iS{c}\iF{h}\iS{k'}}\)</div>
+      <div class="link"><span>\(\iS{c}\)</span></div>
+      <div class="chip">\(C_{\iF{j}\iS{c}}\)</div>
+    </div>
+  </div>
+</template>
+<template id="info-C">
+  <h3>C · Leave \(W^{\text{UK}}\) on the key side</h3>
+  <div class="eqbox">\[ K^{\text{rot}}_{j\iP{h}m} = R_{jmk'}\,W^{\text{UK}}_{c\iP{h}k'}\,C_{jc} \]</div>
+  <p class="note">Why isn't \(j\) summed even though both \(R_{jmk'}\) and \(C_{jc}\) carry \(j\)? Because the outer score \(S_{ihj}\) still needs \(j\)—any index needed outside the dashed box stays free (each token \(j\) is rotated by its own \(\mathbf{R}_j\)), so only the internal indices \(k', c\) contract.</p>
+  <div class="stats">
+    <div class="stat bad"><span>Cache \(K^{\text{rot}}\) / token / layer</span><b>16,384</b><em>\(128\times128\): 32× the 512 of \(C_{jc}\)</em></div>
+    <div class="stat bad"><span>Or recompute every step</span><b>100,000 tokens</b><em>up-project and rotate the whole history again</em></div>
+  </div>
+  <p class="bad"><strong>✗ The key keeps \(h\) from \(W^{\text{UK}}\).</strong></p>
+</template>
+
+<!-- Tab 3: decoupled RoPE -->
+<template id="chain-split">
+  <div class="crow">
+    <span class="rl">nope · content</span>
+    <div class="chain">
+      <div class="chip">\(X_{\iF{i}\iS{u}}\)</div>
+      <div class="link"><span>\(\iS{u}\)</span></div>
+      <div class="chip">\(W^{\text{Q,eff}}_{\iS{u}\iF{h}\iS{c}}\)<span class="tag muted">absorbed</span></div>
+      <div class="link"><span>\(\iS{c}\)</span></div>
+      <div class="chip cache">\(C_{\iF{j}\iS{c}}\)<span class="tag">cached · 512</span></div>
+    </div>
+  </div>
+  <div class="crow">
+    <span class="rl">rope · position</span>
+    <div class="chain">
+      <div class="chip">\(Q^{\text{rope}}_{\iF{i}\iF{h}\iS{m}}\)<span class="tag muted">one query per head</span></div>
+      <div class="link wide"><span>\(\iS{m}\)</span></div>
+      <div class="chip cache">\(K^{\text{rope}}_{\iP{j}\iS{m}}\)<span class="tag">cached · 64 · shared by all heads</span></div>
+    </div>
+  </div>
+</template>
+<template id="info-split">
+  <h3>Decoupled RoPE: separate \(W^{\text{UK}}\) (per-head) from \(R_j\) (per-position)</h3>
+  <div class="eqbox">\[ S_{ihj} = \tfrac{1}{\sqrt{D_k + D_r}}\Big(\tilde{Q}_{ihc}\,C_{jc} + Q^{\text{rope}}_{ihm}\,K^{\text{rope}}_{jm}\Big) \]</div>
+  <ul>
+    <li><strong>nope branch (content):</strong> keeps per-head \(W^{\text{UK}}_{chk}\) but drops \(R_j\), so \(W^{\text{UK}}\) absorbs into Query and the cache stores only \(C_{jc}\) (no \(h\)).</li>
+    <li><strong>rope branch (position):</strong> keeps \(R_j\) but drops \(h\) on the key, so no absorption is needed—one small \(K^{\text{rope}}_{jm}\) is cached and shared across all 128 heads.</li>
+  </ul>
+  <div class="stats">
+    <div class="stat ok"><span>KV cache / token / layer</span><b>512 + 64 = 576</b><em>\(C_{jc}\) and \(K^{\text{rope}}_{jm}\), no \(h\) anywhere</em></div>
+  </div>
+</template>
+
+<script>
+  function setAll(open){ document.querySelectorAll('details').forEach(d => d.open = open); }
+  function typeset(el){ if (window.renderMathInElement) renderMathInElement(el, window.KOPTS); }
+  function fill(el, id){ el.innerHTML = document.getElementById(id).innerHTML; }
+
+  /* ---------- RoPE absorption widget ---------- */
+  (function(){
+    const state = { tab: 'std', attempt: null };
+    const tabs = document.getElementById('ropeTabs');
+    const ctl = document.getElementById('ropeCtl');
+    const chain = document.getElementById('ropeChain');
+    const info = document.getElementById('ropeInfo');
+    const attempts = [['A', 'A · Merge offline'], ['B', 'B · Fold into query'], ['C', 'C · Keep on key side']];
+    const hints = {
+      none: 'Absorption without RoPE: the bracket contains no position index.',
+      split: 'Separate the two key-side operations so neither cached tensor carries h.'
+    };
+
+    function render(){
+      tabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
+      if (state.tab === 'std') {
+        let h = 'Try to absorb:';
+        attempts.forEach(([k, label]) => { h += `<button data-try="${k}" class="${state.attempt === k ? 'active' : ''}">${label}</button>`; });
+        h += '<span class="sep"></span><button data-try="">Reset</button>';
+        ctl.innerHTML = h;
+        fill(chain, state.attempt ? 'chain-' + state.attempt : 'chain-std');
+        fill(info, state.attempt ? 'info-' + state.attempt : 'info-std');
+      } else {
+        ctl.textContent = hints[state.tab];
+        fill(chain, 'chain-' + state.tab);
+        fill(info, 'info-' + state.tab);
+      }
+      typeset(chain); typeset(info);
+    }
+
+    tabs.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      state.tab = b.dataset.tab; state.attempt = null; render();
+    });
+    ctl.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      state.attempt = b.dataset.try || null; render();
+    });
+    render();
+  })();
+
+  /* ---------- KV cache calculator ---------- */
+  (function(){
+    const lens = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072];
+    const labels = ['1K', '2K', '4K', '8K', '16K', '32K', '64K', '128K'];
+    const LAYERS = 60, BYTES = 2, MHA = 2 * 128 * 128, MLA = 512 + 64;
+    const range = document.getElementById('ctxRange');
+    const max = lens[lens.length - 1] * MHA * LAYERS * BYTES;
+    function fmt(b){
+      if (b >= 1e9) return (b / 1e9).toFixed(b >= 1e11 ? 0 : 1) + ' GB';
+      return (b / 1e6).toFixed(b >= 1e8 ? 0 : 1) + ' MB';
+    }
+    function update(){
+      const n = lens[+range.value];
+      const mha = n * MHA * LAYERS * BYTES, mla = n * MLA * LAYERS * BYTES;
+      document.getElementById('ctxLabel').textContent = labels[+range.value];
+      document.getElementById('barMha').style.width = (100 * mha / max) + '%';
+      document.getElementById('barMla').style.width = (100 * mla / max) + '%';
+      document.getElementById('valMha').textContent = fmt(mha);
+      document.getElementById('valMla').textContent = fmt(mla);
+    }
+    range.addEventListener('input', update);
+    update();
+  })();
+</script>
+</body>
+</html>
